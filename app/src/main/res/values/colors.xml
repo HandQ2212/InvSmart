@@ -2,4 +2,27 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="md_theme_light_primary">#0E7490</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#CCF0FA</color>
+    <color name="md_theme_light_onPrimaryContainer">#062433</color>
+    <color name="md_theme_light_secondary">#0F766E</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_background">#F2F7FB</color>
+    <color name="md_theme_light_onBackground">#111827</color>
+    <color name="md_theme_light_surface">#FFFFFF</color>
+    <color name="md_theme_light_onSurface">#0F172A</color>
+    <color name="md_theme_light_surfaceVariant">#E3EDF7</color>
+    <color name="md_theme_light_outline">#A8B4C3</color>
+    <color name="md_theme_light_error">#D12F2F</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+
+    <color name="brand_gradient_start">#EEF7FF</color>
+    <color name="brand_gradient_end">#DCEFFE</color>
+    <color name="brand_surface_tint">#F9FCFF</color>
+    <color name="brand_text_muted">#64748B</color>
+    <color name="brand_success">#1E9E5A</color>
+    <color name="brand_warning">#D97706</color>
+    <color name="brand_danger">#DC2626</color>
 </resources>

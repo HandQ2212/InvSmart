@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_auth">
+
+    <include app:graph="@navigation/nav_auth"/>
+    <include app:graph="@navigation/nav_manager"/>
+    <include app:graph="@navigation/nav_staff"/>
+
+    <action
+        android:id="@+id/action_global_logout"
+        app:destination="@id/nav_auth"
+        app:popUpTo="@id/nav_graph"
+        app:popUpToInclusive="true" />
+
+</navigation>

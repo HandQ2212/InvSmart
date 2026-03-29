@@ -1,0 +1,14 @@
+{
+  "name": "invsmart-firestore-seed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Seed Firestore with InvSmart baseline collections",
+  "main": "seed.js",
+  "scripts": {
+    "seed": "node seed.js",
+    "seed:clean": "node seed.js --clean"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

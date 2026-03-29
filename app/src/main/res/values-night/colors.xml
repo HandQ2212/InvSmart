@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="md_theme_dark_primary">#67D3EF</color>
+    <color name="md_theme_dark_onPrimary">#003544</color>
+    <color name="md_theme_dark_primaryContainer">#005063</color>
+    <color name="md_theme_dark_onPrimaryContainer">#C7F1FF</color>
+    <color name="md_theme_dark_secondary">#69D0C5</color>
+    <color name="md_theme_dark_onSecondary">#003730</color>
+    <color name="md_theme_dark_background">#0D1622</color>
+    <color name="md_theme_dark_onBackground">#E5EDF7</color>
+    <color name="md_theme_dark_surface">#111C2A</color>
+    <color name="md_theme_dark_onSurface">#EAF2FC</color>
+    <color name="md_theme_dark_surfaceVariant">#203145</color>
+    <color name="md_theme_dark_outline">#8DA0B5</color>
+    <color name="md_theme_dark_error">#FFB4AB</color>
+    <color name="md_theme_dark_onError">#690005</color>
+
+    <color name="brand_gradient_start">#111C2A</color>
+    <color name="brand_gradient_end">#1A2B3D</color>
+    <color name="brand_surface_tint">#152233</color>
+    <color name="brand_text_muted">#AFC0D4</color>
+    <color name="brand_success">#59D190</color>
+    <color name="brand_warning">#F4B35A</color>
+    <color name="brand_danger">#FF8A8A</color>
+</resources>

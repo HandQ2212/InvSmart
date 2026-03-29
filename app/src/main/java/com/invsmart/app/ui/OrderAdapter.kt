@@ -1,0 +1,45 @@
+package com.invsmart.app.ui
+
+import android.text.format.DateFormat
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import com.invsmart.app.data.model.Order
+import com.invsmart.app.databinding.ItemOrderBinding
+import java.util.Date
+
+class OrderAdapter : ListAdapter<Order, OrderAdapter.OrderViewHolder>(DiffCallback) {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OrderViewHolder {
+        val binding = ItemOrderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return OrderViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: OrderViewHolder, position: Int) {
+        holder.bind(getItem(position))
+    }
+
+    class OrderViewHolder(
+        private val binding: ItemOrderBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(order: Order) {
+            binding.tvOrderCode.text = "Mã đơn: ${order.orderId}"
+            binding.tvOrderType.text = "Loại: ${if (order.orderType == "import") "Nhập kho" else "Xuất kho"}"
+            binding.tvOrderQuantity.text = "Tổng số lượng: ${order.totalQuantity}"
+            binding.tvOrderDate.text = "Ngày: ${DateFormat.format("dd/MM/yyyy HH:mm", order.createdAt.toDate())}"
+        }
+    }
+
+    private object DiffCallback : DiffUtil.ItemCallback<Order>() {
+        override fun areItemsTheSame(oldItem: Order, newItem: Order): Boolean {
+            return oldItem.orderId == newItem.orderId
+        }
+
+        override fun areContentsTheSame(oldItem: Order, newItem: Order): Boolean {
+            return oldItem == newItem
+        }
+    }
+}

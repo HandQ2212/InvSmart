@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_manager"
+    app:startDestination="@id/managerDashboardFragment">
+
+    <fragment
+        android:id="@+id/managerDashboardFragment"
+        android:name="com.invsmart.app.ui.view.ManagerDashboardFragment"
+        android:label="Manager Dashboard"
+        tools:layout="@layout/fragment_manager_dashboard">
+        <action
+            android:id="@+id/action_dashboard_to_inventory"
+            app:destination="@id/inventoryManagementFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_staffManager"
+            app:destination="@id/staffManagerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/inventoryManagementFragment"
+        android:name="com.invsmart.app.ui.view.InventoryManagementFragment"
+        android:label="fragment_inventory_management"
+        tools:layout="@layout/fragment_inventory_management" />
+
+    <fragment
+        android:id="@+id/staffManagerFragment"
+        android:name="com.invsmart.app.ui.view.StaffManagerFragment"
+        android:label="fragment_staff_manager"
+        tools:layout="@layout/fragment_staff_manager" />
+</navigation>

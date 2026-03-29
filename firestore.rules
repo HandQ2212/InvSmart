@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function userRole(uid) {
+      return userDoc(uid).data.isMaster == true || userDoc(uid).data.roleGlobal == 'master'
+        ? 'master'
+        : (
+          userDoc(uid).data.roleGlobal == 'manager' || userDoc(uid).data.role == 'manager'
+            ? 'manager'
+            : 'staff'
+        );
+    }
+
+    function isMaster(uid) {
+      return signedIn() && userRole(uid) == 'master';
+    }
+
+    function isManager(uid) {
+      return signedIn()
+        && (
+          userRole(uid) == 'master'
+          || userRole(uid) == 'manager'
+        );
+    }
+
+    function existingUserRole() {
+      return resource.data.isMaster == true || resource.data.roleGlobal == 'master'
+        ? 'master'
+        : (
+          resource.data.roleGlobal == 'manager' || resource.data.role == 'manager'
+            ? 'manager'
+            : 'staff'
+        );
+    }
+
+    function incomingUserRole() {
+      return request.resource.data.isMaster == true || request.resource.data.roleGlobal == 'master'
+        ? 'master'
+        : (
+          request.resource.data.roleGlobal == 'manager' || request.resource.data.role == 'manager'
+            ? 'manager'
+            : 'staff'
+        );
+    }
+
+    function roleFieldsUnchanged() {
+      return request.resource.data.roleGlobal == resource.data.roleGlobal
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isMaster == resource.data.isMaster;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+
+      allow create: if isSelf(uid);
+
+      allow update: if isSelf(uid)
+        || (
+          isMaster(request.auth.uid)
+          && existingUserRole() != 'master'
+          && (incomingUserRole() == 'manager' || incomingUserRole() == 'staff')
+        )
+        || (
+          isManager(request.auth.uid)
+          && existingUserRole() == 'staff'
+          && roleFieldsUnchanged()
+        );
+
+      allow delete: if isMaster(request.auth.uid)
+        || (isManager(request.auth.uid) && existingUserRole() == 'staff');
+    }
+
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isManager(request.auth.uid);
+    }
+
+    match /orders/{orderId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && (
+        resource.data.staffUid == request.auth.uid
+        || isManager(request.auth.uid)
+      );
+      allow delete: if isManager(request.auth.uid);
+    }
+
+    match /payments/{paymentId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isManager(request.auth.uid);
+    }
+
+    match /teams/{teamId} {
+      allow read, write: if false;
+    }
+
+    match /team_members/{membershipId} {
+      allow read, write: if false;
+    }
+
+    match /team_invites/{inviteId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

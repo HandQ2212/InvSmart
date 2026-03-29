@@ -1,0 +1,86 @@
+package com.invsmart.app.ui.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.invsmart.app.data.model.Order
+import com.invsmart.app.data.model.OrderItem
+import com.invsmart.app.data.model.Product
+import com.invsmart.app.data.repository.OrderRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class StaffViewModel @Inject constructor(
+    private val orderRepository: OrderRepository
+) : ViewModel() {
+
+    data class CreatedOrderInfo(
+        val orderId: String,
+        val totalAmount: Double
+    )
+
+    private val _selectedProducts = MutableStateFlow<Map<Product, Int>>(emptyMap())
+    val selectedProducts: StateFlow<Map<Product, Int>> = _selectedProducts.asStateFlow()
+
+    private val _orderCreationState = MutableStateFlow<Result<CreatedOrderInfo>?>(null)
+    val orderCreationState: StateFlow<Result<CreatedOrderInfo>?> = _orderCreationState.asStateFlow()
+
+    fun setProductQuantity(product: Product, quantity: Int) {
+        _selectedProducts.update { currentMap ->
+            val mutableMap = currentMap.toMutableMap()
+            if (quantity <= 0) {
+                mutableMap.remove(product)
+            } else {
+                mutableMap[product] = quantity
+            }
+            mutableMap
+        }
+    }
+
+    fun clearSelections() {
+        _selectedProducts.value = emptyMap()
+        _orderCreationState.value = null
+    }
+
+    fun submitOrder(staffUid: String, staffName: String, orderType: String = "sale") {
+        viewModelScope.launch {
+            val selections = _selectedProducts.value
+            if (selections.isEmpty()) return@launch
+
+            val orderItems = selections.map { (product, quantity) ->
+                OrderItem(
+                    productId = product.productId.ifBlank { product.sku },
+                    productName = product.name,
+                    quantity = quantity,
+                    priceAtTime = product.price
+                )
+            }
+
+            val totalQty = selections.values.sum()
+            val totalAmount = selections.entries.sumOf { (product, qty) -> product.price * qty }
+
+            val order = Order(
+                staffUid = staffUid,
+                staffName = staffName,
+                orderType = orderType,
+                items = orderItems,
+                totalQuantity = totalQty,
+                totalAmount = totalAmount
+            )
+
+            val result = orderRepository.createOrder(order)
+            _orderCreationState.value = result.map { orderId ->
+                CreatedOrderInfo(orderId = orderId, totalAmount = totalAmount)
+            }
+
+            if (result.isSuccess) {
+                _selectedProducts.value = emptyMap()
+            }
+        }
+    }
+}

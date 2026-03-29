@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="7dp"
+    app:cardBackgroundColor="@color/brand_surface_tint"
+    app:cardElevation="4dp"
+    app:cardCornerRadius="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvOrderCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mã đơn: "
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvOrderType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Loại: "
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvOrderDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ngày: "
+            android:textColor="@color/brand_text_muted"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvOrderQuantity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tổng số lượng: 0"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase / local scripts
+scripts/firestore-seed/node_modules/
+*service-account*.json
+*firebase-adminsdk*.json
+keys/
