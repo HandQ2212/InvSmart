@@ -19,3 +19,6 @@ scripts/firestore-seed/node_modules/
 *service-account*.json
 *firebase-adminsdk*.json
 keys/
+
+# Firebase client config (contains API key)
+app/google-services.json
