@@ -31,8 +31,12 @@ android {
 
         val url = properties.getProperty("URL") ?: ""
         val apiKey = properties.getProperty("API_KEY") ?: ""
+        val cloudinaryCloudName = properties.getProperty("CLOUDINARY_CLOUD_NAME") ?: "demo"
+        val cloudinaryUploadPreset = properties.getProperty("CLOUDINARY_UPLOAD_PRESET") ?: ""
         buildConfigField("String", "URL", "\"$url\"")
         buildConfigField("String", "API_KEY", "\"$apiKey\"")
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"$cloudinaryUploadPreset\"")
     }
 
     buildTypes {
