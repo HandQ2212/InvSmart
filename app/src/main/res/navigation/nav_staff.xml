@@ -16,6 +16,9 @@
         <action
             android:id="@+id/action_staffHomeFragment_to_staffAccountFragment"
             app:destination="@id/staffAccountFragment" />
+        <action
+            android:id="@+id/action_staffHomeFragment_to_orderInvoiceDetailFragment"
+            app:destination="@id/orderInvoiceDetailFragment" />
     </fragment>
 
     <fragment
@@ -57,4 +60,10 @@
         android:name="com.invsmart.app.ui.view.StaffAccountFragment"
         android:label="fragment_staff_account"
         tools:layout="@layout/fragment_staff_account" />
+
+    <fragment
+        android:id="@+id/orderInvoiceDetailFragment"
+        android:name="com.invsmart.app.ui.view.OrderInvoiceDetailFragment"
+        android:label="fragment_order_invoice_detail"
+        tools:layout="@layout/fragment_order_invoice_detail" />
 </navigation>

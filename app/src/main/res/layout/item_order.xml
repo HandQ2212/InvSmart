@@ -48,6 +48,15 @@
             android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="4dp" />
 
+        <TextView
+            android:id="@+id/tvOrderAmount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Tổng tiền: 0 đ"
+            android:textColor="?attr/colorPrimary"
+            android:textStyle="bold" />
+
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

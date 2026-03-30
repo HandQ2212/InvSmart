@@ -61,6 +61,14 @@ class OrderRepository @Inject constructor(
         }
     }
 
+    suspend fun getOrderById(orderId: String): Result<Order> = withContext(Dispatchers.IO) {
+        runCatching {
+            val snapshot = firestore.collection("orders").document(orderId).get().await()
+            snapshot.toObject(Order::class.java)
+                ?: throw IllegalStateException("Không tìm thấy hóa đơn")
+        }
+    }
+
     suspend fun markOrderPaid(orderId: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             firestore.collection("orders").document(orderId).update(
