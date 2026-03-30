@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/managerDashboardFragment"
         android:name="com.invsmart.app.ui.view.ManagerDashboardFragment"
-        android:label="Manager Dashboard"
+        android:label="Dashboard"
         tools:layout="@layout/fragment_manager_dashboard">
         <action
             android:id="@+id/action_dashboard_to_inventory"

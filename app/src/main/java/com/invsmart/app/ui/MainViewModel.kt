@@ -27,6 +27,7 @@ class MainViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     private var observeProductsJob: Job? = null
+    private val passwordSpecialCharRegex = Regex("[^A-Za-z0-9]")
 
     init {
         if (authRepository.isLoggedIn()) {
@@ -119,6 +120,14 @@ class MainViewModel @Inject constructor(
     }
 
     fun register(email: String, password: String) {
+        val passwordValidationError = validatePassword(password)
+        if (email.isBlank() || passwordValidationError != null) {
+            _uiState.update {
+                it.copy(authState = AuthState.Error(passwordValidationError ?: "Email không hợp lệ"))
+            }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(authState = AuthState.Loading, message = "Đang tạo tài khoản...") }
             authRepository.register(email, password)
@@ -157,14 +166,45 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private fun validatePassword(password: String): String? {
+        if (password.length < 8) {
+            return "Mật khẩu phải có ít nhất 8 ký tự"
+        }
+        if (!password.any { it.isDigit() }) {
+            return "Mật khẩu phải có ít nhất 1 chữ số"
+        }
+        if (!password.any { it.isLowerCase() }) {
+            return "Mật khẩu phải có ít nhất 1 chữ cái thường"
+        }
+        if (!password.any { it.isUpperCase() }) {
+            return "Mật khẩu phải có ít nhất 1 chữ cái hoa"
+        }
+        if (!passwordSpecialCharRegex.containsMatchIn(password)) {
+            return "Mật khẩu phải có ít nhất 1 ký tự đặc biệt"
+        }
+        return null
+    }
+
     fun resetPassword(email: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
-            authRepository.resetPassword(email)
-                .onSuccess {
-                    onResult(true, "Email khôi phục đã được gửi")
+            val normalizedEmail = email.trim().lowercase()
+            authRepository.isRegisteredEmail(normalizedEmail)
+                .onSuccess { exists ->
+                    if (!exists) {
+                        onResult(false, "Email chưa được đăng ký trong hệ thống")
+                        return@onSuccess
+                    }
+
+                    authRepository.resetPassword(normalizedEmail)
+                        .onSuccess {
+                            onResult(true, "Email khôi phục đã được gửi")
+                        }
+                        .onFailure { error ->
+                            onResult(false, error.localizedMessage ?: "Lỗi gửi email khôi phục")
+                        }
                 }
                 .onFailure { error ->
-                    onResult(false, error.localizedMessage ?: "Lỗi gửi email khôi phục")
+                    onResult(false, error.localizedMessage ?: "Không thể kiểm tra email")
                 }
         }
     }

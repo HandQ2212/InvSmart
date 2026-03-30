@@ -37,17 +37,23 @@ class LoginFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val savedStateHandle = findNavController().currentBackStackEntry?.savedStateHandle
-        val registeredEmail = savedStateHandle?.get<String>("registered_email")
-        val registeredPassword = savedStateHandle?.get<String>("registered_password")
-        if (!registeredEmail.isNullOrEmpty()) {
-            binding.edtEmail.setText(registeredEmail)
+        val loginSavedStateHandle = findNavController()
+            .getBackStackEntry(R.id.loginFragment)
+            .savedStateHandle
+
+        loginSavedStateHandle.getLiveData<String>("registered_email").observe(viewLifecycleOwner) { registeredEmail ->
+            if (!registeredEmail.isNullOrEmpty()) {
+                binding.edtEmail.setText(registeredEmail)
+                loginSavedStateHandle.remove<String>("registered_email")
+            }
         }
-        if (!registeredPassword.isNullOrEmpty()) {
-            binding.edtPassword.setText(registeredPassword)
+
+        loginSavedStateHandle.getLiveData<String>("registered_password").observe(viewLifecycleOwner) { registeredPassword ->
+            if (!registeredPassword.isNullOrEmpty()) {
+                binding.edtPassword.setText(registeredPassword)
+                loginSavedStateHandle.remove<String>("registered_password")
+            }
         }
-        savedStateHandle?.remove<String>("registered_email")
-        savedStateHandle?.remove<String>("registered_password")
 
         binding.btnLogin.setOnClickListener {
             val email = binding.edtEmail.text.toString().trim()

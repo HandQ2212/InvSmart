@@ -35,6 +35,13 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun isRegisteredEmail(email: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        runCatching {
+            val methods = auth.fetchSignInMethodsForEmail(email).await().signInMethods
+            !methods.isNullOrEmpty()
+        }
+    }
+
     fun logout() {
         auth.signOut()
     }

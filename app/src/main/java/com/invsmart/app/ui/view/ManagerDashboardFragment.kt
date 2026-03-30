@@ -28,6 +28,16 @@ class ManagerDashboardFragment : Fragment() {
     private val managerViewModel: ManagerViewModel by activityViewModels()
     private var lastLoadedRoleKey: String? = null
 
+    private fun applyRoleHeader(role: String) {
+        if (role == "master") {
+            binding.toolbar.title = "Master Dashboard"
+            binding.tvWelcome.text = "Xin chào, Master!"
+        } else {
+            binding.toolbar.title = "Manager Dashboard"
+            binding.tvWelcome.text = "Xin chào, Quản lý!"
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -41,6 +51,7 @@ class ManagerDashboardFragment : Fragment() {
 
         mainViewModel.uiState.value.currentUser?.let {
             lastLoadedRoleKey = "${it.uid}:${it.roleGlobal}"
+            applyRoleHeader(it.roleGlobal)
             managerViewModel.loadDashboard(it)
         }
 
@@ -65,6 +76,7 @@ class ManagerDashboardFragment : Fragment() {
                         val roleKey = "${actor.uid}:${actor.roleGlobal}"
                         if (lastLoadedRoleKey != roleKey) {
                             lastLoadedRoleKey = roleKey
+                            applyRoleHeader(actor.roleGlobal)
                             managerViewModel.loadDashboard(actor)
                         }
                     }

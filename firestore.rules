@@ -62,6 +62,11 @@ service cloud.firestore {
         && request.resource.data.isMaster == resource.data.isMaster;
     }
 
+    function stockQtyOnlyUpdate() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['stockQty'])
+        && request.resource.data.stockQty is number;
+    }
+
     match /users/{uid} {
       allow read: if signedIn();
 
@@ -85,7 +90,9 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if signedIn();
-      allow create, update, delete: if isManager(request.auth.uid);
+      allow create, delete: if isManager(request.auth.uid);
+      allow update: if isManager(request.auth.uid)
+        || (signedIn() && stockQtyOnlyUpdate());
     }
 
     match /orders/{orderId} {

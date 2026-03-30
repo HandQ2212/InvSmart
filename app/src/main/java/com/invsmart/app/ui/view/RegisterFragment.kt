@@ -25,6 +25,7 @@ class RegisterFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: MainViewModel by activityViewModels()
     private var hasHandledRegisterResult = false
+    private val passwordSpecialCharRegex = Regex("[^A-Za-z0-9]")
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,11 +41,12 @@ class RegisterFragment : Fragment() {
         binding.btnRegister.setOnClickListener {
             val email = binding.edtEmail.text.toString().trim()
             val password = binding.edtPassword.text.toString().trim()
-            if (email.isNotEmpty() && password.length >= 6) {
+            val validationError = getRegisterInputError(email, password)
+            if (validationError == null) {
                 hasHandledRegisterResult = false
                 viewModel.register(email, password)
             } else {
-                Toast.makeText(requireContext(), "Email không hợp lệ hoặc mật khẩu quá ngắn", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), validationError, Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -61,18 +63,19 @@ class RegisterFragment : Fragment() {
                                 hasHandledRegisterResult = true
                                 val registeredEmail = binding.edtEmail.text.toString().trim()
                                 val registeredPassword = binding.edtPassword.text.toString().trim()
+                                val navController = findNavController()
 
                                 Toast.makeText(requireContext(), "Đăng ký thành công, vui lòng đăng nhập", Toast.LENGTH_SHORT).show()
 
-                                findNavController().previousBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("registered_email", registeredEmail)
-                                findNavController().previousBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("registered_password", registeredPassword)
+                                navController.getBackStackEntry(R.id.loginFragment)
+                                    .savedStateHandle
+                                    .set("registered_email", registeredEmail)
+                                navController.getBackStackEntry(R.id.loginFragment)
+                                    .savedStateHandle
+                                    .set("registered_password", registeredPassword)
 
                                 viewModel.logout()
-                                findNavController().popBackStack()
+                                navController.popBackStack()
                             }
                         }
                         is AuthState.Error -> {
@@ -94,5 +97,27 @@ class RegisterFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun getRegisterInputError(email: String, password: String): String? {
+        if (email.isEmpty()) {
+            return "Email không được để trống"
+        }
+        if (password.length < 8) {
+            return "Mật khẩu phải có ít nhất 8 ký tự"
+        }
+        if (!password.any { it.isDigit() }) {
+            return "Mật khẩu phải có ít nhất 1 chữ số"
+        }
+        if (!password.any { it.isLowerCase() }) {
+            return "Mật khẩu phải có ít nhất 1 chữ cái thường"
+        }
+        if (!password.any { it.isUpperCase() }) {
+            return "Mật khẩu phải có ít nhất 1 chữ cái hoa"
+        }
+        if (!passwordSpecialCharRegex.containsMatchIn(password)) {
+            return "Mật khẩu phải có ít nhất 1 ký tự đặc biệt"
+        }
+        return null
     }
 }

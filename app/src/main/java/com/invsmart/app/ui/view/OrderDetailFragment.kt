@@ -87,15 +87,14 @@ class OrderDetailFragment : Fragment() {
                             if (result.isSuccess) {
                                 val created = result.getOrNull()
                                 if (created != null) {
-                                    findNavController().navigate(
-                                        R.id.action_orderDetailFragment_to_paymentQrFragment,
-                                        Bundle().apply {
-                                            putString("orderId", created.orderId)
-                                            putDouble("totalAmount", created.totalAmount)
-                                        }
-                                    )
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Đã tạo phiếu ${created.orderId}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                                 staffViewModel.clearSelections()
+                                findNavController().navigate(R.id.action_orderDetailFragment_to_staffHomeFragment)
                             } else {
                                 val err = result.exceptionOrNull()?.message ?: "Lỗi tạo đơn"
                                 Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()

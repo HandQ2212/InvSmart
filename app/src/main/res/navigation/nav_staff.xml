@@ -38,9 +38,6 @@
             app:destination="@id/staffHomeFragment"
             app:popUpTo="@id/staffHomeFragment"
             app:popUpToInclusive="true" />
-        <action
-            android:id="@+id/action_orderDetailFragment_to_paymentQrFragment"
-            app:destination="@id/paymentQrFragment" />
     </fragment>
 
     <fragment
