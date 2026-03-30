@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.invsmart.app.data.model.Product
 import com.invsmart.app.databinding.ItemOrderDetailBinding
+import com.invsmart.app.util.VndFormatter
 
 class OrderDetailAdapter : ListAdapter<Pair<Product, Int>, OrderDetailAdapter.DetailViewHolder>(DiffCallback) {
 
@@ -24,10 +25,13 @@ class OrderDetailAdapter : ListAdapter<Pair<Product, Int>, OrderDetailAdapter.De
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(pair: Pair<Product, Int>) {
             val (product, quantity) = pair
+            val unitPrice = product.price
+            val total = unitPrice * quantity
+
             binding.tvProductName.text = product.name
-            binding.tvQuantity.text = "x$quantity"
-            val total = product.price * quantity
-            binding.tvProvisionalPrice.text = "$total"
+            binding.tvUnitPrice.text = "Đơn giá: ${VndFormatter.format(unitPrice)}"
+            binding.tvQuantity.text = "Số lượng: $quantity"
+            binding.tvProvisionalPrice.text = VndFormatter.format(total)
         }
     }
 

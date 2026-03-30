@@ -17,6 +17,7 @@ import com.invsmart.app.R
 import com.invsmart.app.databinding.FragmentOrderDetailBinding
 import com.invsmart.app.ui.MainViewModel
 import com.invsmart.app.ui.OrderDetailAdapter
+import com.invsmart.app.util.VndFormatter
 import com.invsmart.app.ui.viewmodel.StaffViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -76,6 +77,10 @@ class OrderDetailFragment : Fragment() {
                         val list = selections.toList()
                         detailAdapter.submitList(list)
                         binding.tvTotalQuantity.text = selections.values.sum().toString()
+                        val totalAmount = selections.entries.sumOf { (product, quantity) ->
+                            product.price.toDouble() * quantity
+                        }
+                        binding.tvTotalAmount.text = VndFormatter.format(totalAmount)
                     }
                 }
 

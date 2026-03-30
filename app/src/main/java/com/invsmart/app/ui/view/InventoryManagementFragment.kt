@@ -131,7 +131,7 @@ class InventoryManagementFragment : Fragment() {
             setText(productToEdit?.name ?: "")
         }
         val edtPrice = EditText(requireContext()).apply { 
-            hint = "Giá"
+            hint = "Giá (đ)"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
             setText(productToEdit?.price?.toString() ?: "")
         }

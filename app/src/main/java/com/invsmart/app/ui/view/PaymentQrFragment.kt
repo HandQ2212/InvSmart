@@ -11,6 +11,7 @@ import com.bumptech.glide.Glide
 import com.invsmart.app.R
 import com.invsmart.app.data.repository.OrderRepository
 import com.invsmart.app.databinding.FragmentPaymentQrBinding
+import com.invsmart.app.util.VndFormatter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,7 @@ class PaymentQrFragment : Fragment() {
 
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
         binding.tvOrderId.text = "Mã đơn: $orderId"
-        binding.tvAmount.text = "Tổng thanh toán: %,.0f đ".format(totalAmount)
+        binding.tvAmount.text = "Tổng thanh toán: ${VndFormatter.format(totalAmount)}"
 
         val qrPayload = "INVSMART|$orderId|${"%.0f".format(totalAmount)}"
         val qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=$qrPayload"

@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.invsmart.app.data.model.Product
 import com.invsmart.app.databinding.ItemManagerProductBinding
+import com.invsmart.app.util.VndFormatter
 
 class ManagerProductAdapter(
     private val onEditClick: (Product) -> Unit,
@@ -29,7 +30,7 @@ class ManagerProductAdapter(
 
         fun bind(product: Product) {
             binding.tvName.text = product.name
-            binding.tvPrice.text = "${product.price} / ${product.unit}"
+            binding.tvPrice.text = "${VndFormatter.format(product.price)} / ${product.unit}"
             binding.tvStock.text = "Tồn kho: ${product.stockQuantity}"
             binding.tvSku.text = "SKU: ${product.sku}"
 

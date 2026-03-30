@@ -15,6 +15,7 @@ import com.invsmart.app.R
 import com.invsmart.app.databinding.FragmentManagerDashboardBinding
 import com.invsmart.app.ui.MainViewModel
 import com.invsmart.app.ui.viewmodel.ManagerViewModel
+import com.invsmart.app.util.VndFormatter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -59,7 +60,7 @@ class ManagerDashboardFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     managerViewModel.revenue.collect { revenue ->
-                        binding.tvRevenue.text = "%,.0f đ".format(revenue)
+                        binding.tvRevenue.text = VndFormatter.format(revenue)
                     }
                 }
                 launch {
