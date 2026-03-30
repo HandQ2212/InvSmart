@@ -2,6 +2,7 @@ package com.invsmart.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.invsmart.app.data.local.SessionManager
 import com.invsmart.app.data.model.AuthState
 import com.invsmart.app.data.model.UiState
 import com.invsmart.app.data.repository.AuthRepository
@@ -21,7 +22,8 @@ import com.invsmart.app.data.model.User
 class MainViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val productRepository: ProductRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -90,6 +92,8 @@ class MainViewModel @Inject constructor(
                             activeTeamId = null
                         ) 
                     }
+
+                    sessionManager.saveLoginSession(normalizedRole)
 
                     startObserveProducts()
                 }.onFailure {
@@ -212,6 +216,7 @@ class MainViewModel @Inject constructor(
     fun logout() {
         observeProductsJob?.cancel()
         authRepository.logout()
+        sessionManager.clearSession()
         _uiState.update {
             it.copy(
                 authState = AuthState.Unauthenticated,

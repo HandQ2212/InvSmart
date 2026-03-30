@@ -68,7 +68,7 @@
                 android:id="@+id/btnMinus"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@android:drawable/ic_menu_delete"
+                android:src="@drawable/ic_minus"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 app:tint="@color/brand_danger"
                 android:padding="4dp"/>
