@@ -1,170 +1,198 @@
-# InvSmart - Tinh nang hien dang hoat dong
+# InvSmart - Chi tiết chức năng ứng dụng
 
-Tai lieu nay tong hop cac tinh nang da co trong ung dung, dua tren code hien tai cua du an.
+Tài liệu này mô tả chi tiết các chức năng đang hoạt động trong ứng dụng InvSmart, theo đúng trạng thái code hiện tại.
 
-## 1) Tong quan kien truc app
+## 1. Tổng quan hệ thống
 
-1. Nen tang: Android (Kotlin), Navigation Component, ViewModel + StateFlow, Hilt DI.
-2. Backend as a Service: Firebase Auth + Cloud Firestore.
-3. Tich hop upload anh: Cloudinary (Android SDK).
-4. Co luu session local bang SharedPreferences de vao thang man role khi mo lai app.
+1. Nền tảng: Android (Kotlin).
+2. Kiến trúc: Navigation Component, ViewModel + StateFlow, Hilt DI.
+3. Dịch vụ backend: Firebase Authentication + Cloud Firestore.
+4. Upload ảnh: Cloudinary Android SDK. 
+5. Lưu phiên đăng nhập cục bộ: SharedPreferences (SessionManager).
 
-## 2) He thong dang nhap, dang ky, khoi phuc mat khau
+## 2. Chức năng xác thực tài khoản
 
-### 2.1 Dang nhap
+### 2.1 Đăng nhập
 
-1. Dang nhap bang email/password thong qua Firebase Auth.
-2. Sau khi dang nhap thanh cong:
-   - Tai thong tin user trong collection `users`.
-   - Chuan hoa role (`master`, `manager`, `staff`).
-   - Dieu huong vao man theo role:
-     - `master`/`manager` -> luong manager.
-     - `staff` -> luong staff.
-3. Neu tai khoan khong ton tai hoac bi khoa (`accessStatus = blocked/disabled`) thi bat dang xuat va thong bao loi.
+1. Đăng nhập bằng email và mật khẩu qua Firebase Auth.
+2. Sau đăng nhập thành công:
+   - Tải hồ sơ user từ `users`.
+   - Chuẩn hóa và kiểm tra role (`master`, `manager`, `staff`).
+   - Điều hướng đúng luồng màn hình theo role.
+3. Chặn tài khoản không hợp lệ:
+   - Nếu thiếu hồ sơ Firestore, bị khóa hoặc bị vô hiệu hóa (`accessStatus`), hệ thống tự đăng xuất và hiển thị lỗi.
 
-### 2.2 Dang ky
+### 2.2 Đăng ký
 
-1. Dang ky tai khoan moi bang email/password.
-2. Validate mat khau bat buoc:
-   - >= 8 ky tu.
-   - Co it nhat 1 chu so.
-   - Co it nhat 1 chu thuong.
-   - Co it nhat 1 chu hoa.
-   - Co it nhat 1 ky tu dac biet.
-3. Sau khi tao account Firebase thanh cong:
-   - Tao profile user trong collection `users` (mac dinh role `staff`, `accessStatus = active`).
-4. Sau dang ky thanh cong:
-   - Quay ve man dang nhap.
-   - Tu dong dien san email + mat khau vua dang ky vao form login.
+1. Tạo tài khoản mới bằng email và mật khẩu.
+2. Kiểm tra độ mạnh mật khẩu ở cả UI và ViewModel:
+   - Tối thiểu 8 ký tự.
+   - Có ít nhất 1 chữ số.
+   - Có ít nhất 1 chữ thường.
+   - Có ít nhất 1 chữ hoa.
+   - Có ít nhất 1 ký tự đặc biệt.
+3. Sau khi đăng ký thành công:
+   - Tạo hồ sơ người dùng trong `users`.
+   - Gán mặc định role là `staff`, trạng thái `active`.
+   - Quay về màn đăng nhập và tự điền email/mật khẩu vừa đăng ký.
 
-### 2.3 Quen mat khau
+### 2.3 Quên mật khẩu
 
-1. Kiem tra email da dang ky hay chua.
-2. Neu da ton tai, gui email reset password qua Firebase Auth.
+1. Kiểm tra email tồn tại trong hệ thống.
+2. Nếu hợp lệ, gửi email đặt lại mật khẩu qua Firebase Auth.
 
-## 3) Session va dieu huong khi mo app
+## 3. Phiên đăng nhập và điều hướng khi mở app
 
-1. Luu trang thai login + role vao SharedPreferences (`SessionManager`).
-2. Khi mo app lai:
-   - Neu chua login -> vao luong auth.
-   - Neu da login va role la manager/master -> vao nav manager.
-   - Neu da login va role la staff -> vao nav staff.
-3. Dang xuat se:
-   - Sign out Firebase Auth.
-   - Xoa session local.
-   - Reset state tren UI va ve luong auth.
+1. Lưu trạng thái đăng nhập và role vào SharedPreferences.
+2. Khi mở lại app:
+   - Chưa đăng nhập: vào luồng Auth.
+   - Đã đăng nhập `manager/master`: vào luồng Manager.
+   - Đã đăng nhập `staff`: vào luồng Staff.
+3. Khi đăng xuất:
+   - Sign out Firebase.
+   - Xóa session local.
+   - Reset state UI và quay về luồng Auth.
 
-## 4) Tinh nang luong Manager/Master
+## 4. Chức năng theo vai trò Manager/Master
 
-### 4.1 Dashboard
+### 4.1 Dashboard quản trị
 
-1. Hien thi thong tin chao theo role (`Master Dashboard`/`Manager Dashboard`).
-2. Hien doanh thu tong tu cac don da thanh toan (`status = paid`).
-3. Dieu huong nhanh den:
-   - Quan ly kho hang.
-   - Quan ly nhan vien.
-4. Co nut dang xuat.
+1. Hiển thị tiêu đề theo role (Master Dashboard hoặc Manager Dashboard).
+2. Hiển thị tổng doanh thu từ các đơn đã thanh toán (`status = paid`).
+3. Điều hướng nhanh đến:
+   - Quản lý kho hàng.
+   - Quản lý nhân viên.
+4. Hỗ trợ đăng xuất trực tiếp trên dashboard.
 
-### 4.2 Quan ly kho hang (CRUD san pham)
+### 4.2 Quản lý kho hàng
 
-1. Xem danh sach san pham realtime tu Firestore (`products`).
-2. Them san pham moi:
-   - SKU, ten, gia, ton kho.
-   - Chon anh tu may.
-   - Preview anh ngay trong dialog.
-   - Upload anh len Cloudinary.
-   - Lay `secure_url` va luu vao `imageUrl` cua product.
-3. Sua san pham:
-   - Sua ten, gia, ton kho, anh.
-   - Co the giu anh cu hoac chon anh moi de upload lai.
-4. Xoa san pham co hop thoai xac nhan.
+1. Xem danh sách sản phẩm từ Firestore theo thời gian thực.
+2. Thêm sản phẩm mới gồm:
+   - SKU.
+   - Tên sản phẩm.
+   - Giá (đ).
+   - Tồn kho.
+   - Ảnh sản phẩm.
+3. Chọn ảnh từ thiết bị, xem preview ngay trong dialog.
+4. Upload ảnh lên Cloudinary và lưu `secure_url` vào `imageUrl` trong Firestore.
+5. Sửa thông tin sản phẩm và có thể thay ảnh mới.
+6. Xóa sản phẩm có xác nhận để tránh thao tác nhầm.
 
-### 4.3 Quan ly nguoi dung
+### 4.3 Quản lý người dùng
 
-1. Tai danh sach user co the quan ly theo role cua actor:
-   - Master: quan ly Manager + Staff.
-   - Manager: chi xem/quan ly Staff.
-2. Doi role qua lai Manager <-> Staff (chi Master duoc doi).
-3. Chan doi role voi tai khoan Master.
+1. Tải danh sách user theo quyền hiện tại:
+   - Master quản lý được Manager và Staff.
+   - Manager chỉ quản lý Staff.
+2. Đổi quyền Manager/Staff (chỉ Master được phép).
+3. Chặn thao tác đổi quyền tài khoản Master.
 
-## 5) Tinh nang luong Staff
+## 5. Chức năng theo vai trò Staff
 
-### 5.1 Trang Staff Home
+### 5.1 Trang Đơn hàng của tôi
 
-1. Hien danh sach don hang cua nhan vien hien tai (theo `staffUid`).
-2. Sap xep don theo thoi gian tao giam dan.
-3. Toolbar co:
-   - Vao trang tai khoan.
-   - Dang xuat.
-4. Co nut tao phieu moi.
+1. Hiển thị danh sách đơn theo `staffUid` của tài khoản hiện tại.
+2. Sắp xếp đơn theo thời gian tạo giảm dần.
+3. Mỗi card đơn hiển thị:
+   - Mã đơn.
+   - Loại đơn.
+   - Ngày tạo.
+   - Tổng số lượng.
+   - Tổng tiền hóa đơn (đ).
+4. Dữ liệu được refresh khi:
+   - User state sẵn sàng sau khi mở app.
+   - Quay lại foreground (`onResume`).
+5. Nhấn vào card đơn để mở màn chi tiết hóa đơn.
 
-### 5.2 Chon san pham
+### 5.2 Tạo phiếu mới
 
-1. Hien danh sach san pham de tao don.
-2. Tim kiem theo ten hoac SKU.
-3. Tang/giam so luong moi san pham.
-4. Tong so luong da chon cap nhat tren nut "Tiep tuc (x)".
+1. Vào danh sách sản phẩm để chọn hàng cần lập đơn.
+2. Tìm kiếm theo tên hoặc SKU.
+3. Tăng/giảm số lượng từng sản phẩm (không vượt tồn kho khi bán).
+4. Nút tiếp tục hiển thị số mặt hàng đã chọn.
 
-### 5.3 Xac nhan don
+### 5.3 Xác nhận tạo đơn
 
-1. Xem danh sach item da chon + tong so luong.
-2. Tao don hang (`orders`) voi thong tin:
-   - staffUid, staffName, orderType.
-   - items, totalQuantity, totalAmount.
-   - status mac dinh `pending_payment`.
-3. Cap nhat ton kho theo batch:
-   - Don `sale`: tru ton.
-   - Don `import`: cong ton.
+1. Màn xác nhận hiển thị từng dòng hàng:
+   - Tên mặt hàng.
+   - Đơn giá (đ).
+   - Số lượng.
+   - Thành tiền.
+2. Cuối màn có tổng kết:
+   - Tổng số lượng.
+   - Tổng tiền đơn.
+3. Khi xác nhận:
+   - Tạo document trong `orders` với `pending_payment`.
+   - Lưu `items`, `totalQuantity`, `totalAmount`, `staffUid`, `staffName`.
+   - Cập nhật tồn kho theo batch:
+     - `sale`: trừ kho.
+     - `import`: cộng kho.
 
-### 5.4 Thanh toan QR
+### 5.4 Chi tiết hóa đơn đã tạo
 
-1. Co man thanh toan QR (`PaymentQrFragment`) sinh QR URL theo payload don hang.
-2. Nut "Da thanh toan" cap nhat don:
-   - `status = paid`
-   - `paidAt = now`
-3. Quay ve trang Staff Home sau khi cap nhat thanh cong.
+1. Mở từ danh sách Đơn hàng của tôi.
+2. Hiển thị thông tin đầu hóa đơn:
+   - Mã đơn.
+   - Loại đơn.
+   - Ngày tạo.
+   - Trạng thái (Chờ thanh toán hoặc Đã thanh toán).
+3. Hiển thị danh sách item trong hóa đơn, gồm:
+   - Tên hàng.
+   - Đơn giá.
+   - Số lượng.
+   - Thành tiền từng dòng.
+4. Hiển thị tổng số lượng và tổng tiền cuối hóa đơn.
 
-## 6) Tai khoan ca nhan
+### 5.5 Thanh toán QR
 
-1. Staff co the xem email (read-only).
-2. Cap nhat ho ten va so dien thoai.
-3. Luu xuong Firestore (`users`) kem `updatedAt`.
+1. Sinh mã QR từ payload đơn hàng.
+2. Hiển thị tổng thanh toán theo định dạng đ.
+3. Nút Tôi đã thanh toán:
+   - Cập nhật `status = paid`.
+   - Cập nhật `paidAt = now`.
+4. Sau cập nhật thành công, quay về Staff Home.
 
-## 7) Mo hinh du lieu dang dung
+## 6. Chức năng tài khoản cá nhân
 
-### 7.1 Collections chinh
+1. Xem email (chỉ đọc).
+2. Cập nhật họ tên và số điện thoại.
+3. Lưu thay đổi lên Firestore kèm `updatedAt`.
+
+## 7. Chuẩn hiển thị tiền tệ
+
+1. Toàn bộ tiền trong app hiển thị theo hậu tố `đ`.
+2. Dùng formatter dùng chung để đảm bảo định dạng nhất quán trên các màn:
+   - Danh sách sản phẩm.
+   - Danh sách đơn hàng.
+   - Màn xác nhận đơn.
+   - Màn chi tiết hóa đơn.
+   - Dashboard doanh thu.
+   - Thanh toán QR.
+
+## 8. Mô hình dữ liệu chính
+
+### 8.1 Collections
 
 1. `users`
 2. `products`
 3. `orders`
 
-### 7.2 Field nghiep vu noi bat
+### 8.2 Trường dữ liệu nổi bật
 
-1. Product:
-   - `productId`, `sku`, `name`, `price`, `stockQty`, `imageUrl`, ...
-2. Order:
-   - `orderId`, `staffUid`, `status`, `items`, `totalAmount`, `paidAt`, ...
-3. User:
-   - `uid`, `email`, `roleGlobal`, `isMaster`, `accessStatus`, ...
+1. `users`:
+   - `uid`, `email`, `fullName`, `phoneNumber`, `roleGlobal`, `accessStatus`, `updatedAt`.
+2. `products`:
+   - `productId`, `sku`, `name`, `price`, `stockQty`, `imageUrl`.
+3. `orders`:
+   - `orderId`, `staffUid`, `staffName`, `orderType`, `status`, `items`, `totalQuantity`, `totalAmount`, `paidAt`, `createdAt`.
 
-## 8) Tich hop Cloudinary hien tai
+## 9. Tích hợp Cloudinary
 
-1. App init Cloudinary khi startup (`InvSmartApp`).
-2. Cau hinh doc tu `BuildConfig`:
-   - `CLOUDINARY_CLOUD_NAME`
-   - `CLOUDINARY_UPLOAD_PRESET`
-3. Upload anh su dung unsigned preset.
-4. Anh sau upload luu URL vao Firestore de hien thi bang Glide.
+1. Khởi tạo Cloudinary từ `BuildConfig` khi app start.
+2. Dùng unsigned upload preset cho flow upload ảnh sản phẩm.
+3. URL ảnh sau upload lưu vào Firestore và hiển thị bằng Glide.
 
-## 9) Diem da hoan thien ve UX/logic
+## 10. Giới hạn hiện tại
 
-1. Dang ky xong quay lai login va autofill thong tin.
-2. Validate mat khau tai ca UI layer va ViewModel layer.
-3. Session role-based startup de bo qua man auth khi da login.
-4. Preview anh truoc khi luu san pham.
-
-## 10) Cac gioi han hien tai (de biet)
-
-1. Payment QR dang su dung URL tao QR don gian (chua gateway thanh toan that).
-2. Upload Cloudinary dang dung unsigned preset (phu hop MVP, can can nhac signed upload neu can muc do bao mat cao hon).
-3. Model van giu mot so field legacy lien quan team (`teamId`, `defaultTeamId`) nhung luong hien tai da van hanh theo 1 kho chung.
+1. QR payment hiện là flow mô phỏng xác nhận thanh toán, chưa tích hợp cổng thanh toán thật.
+2. Upload Cloudinary đang dùng unsigned preset, phù hợp MVP; có thể nâng cấp signed upload khi cần bảo mật cao hơn.
+3. Một số trường legacy liên quan team vẫn còn trong model, nhưng luồng nghiệp vụ hiện tại đang vận hành theo một kho chung.

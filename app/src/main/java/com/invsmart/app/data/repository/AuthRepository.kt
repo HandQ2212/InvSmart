@@ -1,6 +1,8 @@
 package com.invsmart.app.data.repository
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -9,7 +11,8 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthRepository @Inject constructor(
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
 ) {
     fun isLoggedIn(): Boolean = auth.currentUser != null
     fun getCurrentUserId(): String? = auth.currentUser?.uid
@@ -28,17 +31,19 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun resetPassword(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun checkAndResetPassword(email: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            val userQuery = firestore.collection("users")
+                .whereEqualTo("email", email)
+                .limit(1)
+                .get()
+                .await()
+            if (userQuery.isEmpty) {
+                throw Exception("Email không tồn tại trong hệ thống.")
+            }
+
             auth.sendPasswordResetEmail(email).await()
             Unit
-        }
-    }
-
-    suspend fun isRegisteredEmail(email: String): Result<Boolean> = withContext(Dispatchers.IO) {
-        runCatching {
-            val methods = auth.fetchSignInMethodsForEmail(email).await().signInMethods
-            !methods.isNullOrEmpty()
         }
     }
 

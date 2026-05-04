@@ -97,6 +97,8 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.gson)
     implementation(libs.hilt.android)
+    implementation(libs.navigation.fragment.ktx)
+    implementation(libs.navigation.ui.ktx)
     kapt(libs.hilt.android.compiler)
 
     // Utilities

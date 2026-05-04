@@ -4,6 +4,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.content.edit
 
 @Singleton
 class SessionManager @Inject constructor(
@@ -12,10 +13,10 @@ class SessionManager @Inject constructor(
     private val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
     fun saveLoginSession(role: String) {
-        prefs.edit()
-            .putBoolean(KEY_IS_LOGGED_IN, true)
-            .putString(KEY_ROLE, role)
-            .apply()
+        prefs.edit {
+            putBoolean(KEY_IS_LOGGED_IN, true)
+                .putString(KEY_ROLE, role)
+        }
     }
 
     fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
@@ -23,10 +24,10 @@ class SessionManager @Inject constructor(
     fun getRole(): String = prefs.getString(KEY_ROLE, "") ?: ""
 
     fun clearSession() {
-        prefs.edit()
-            .putBoolean(KEY_IS_LOGGED_IN, false)
-            .remove(KEY_ROLE)
-            .apply()
+        prefs.edit {
+            putBoolean(KEY_IS_LOGGED_IN, false)
+                .remove(KEY_ROLE)
+        }
     }
 
     companion object {

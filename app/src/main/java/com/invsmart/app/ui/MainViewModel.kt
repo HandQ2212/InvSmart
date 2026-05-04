@@ -192,23 +192,17 @@ class MainViewModel @Inject constructor(
     fun resetPassword(email: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             val normalizedEmail = email.trim().lowercase()
-            authRepository.isRegisteredEmail(normalizedEmail)
-                .onSuccess { exists ->
-                    if (!exists) {
-                        onResult(false, "Email chưa được đăng ký trong hệ thống")
-                        return@onSuccess
-                    }
-
-                    authRepository.resetPassword(normalizedEmail)
-                        .onSuccess {
-                            onResult(true, "Email khôi phục đã được gửi")
-                        }
-                        .onFailure { error ->
-                            onResult(false, error.localizedMessage ?: "Lỗi gửi email khôi phục")
-                        }
+            authRepository.checkAndResetPassword(normalizedEmail)
+                .onSuccess {
+                    onResult(true, "Link khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra email của bạn.")
                 }
                 .onFailure { error ->
-                    onResult(false, error.localizedMessage ?: "Không thể kiểm tra email")
+                    val errorMessage = when (error.message) {
+                        "Email không tồn tại trong hệ thống." -> "Email này chưa được đăng ký trong hệ thống InvSmart."
+                        else -> error.localizedMessage ?: "Đã có lỗi xảy ra, vui lòng thử lại sau."
+                    }
+
+                    onResult(false, errorMessage)
                 }
         }
     }
