@@ -41,6 +41,7 @@ class UserRepository @Inject constructor(
             role = doc.getString("role") ?: "",
             roleGlobal = normalizedRole,
             isMaster = isMaster || normalizedRole == "master",
+            storeId = doc.getString("storeId") ?: doc.getString("defaultTeamId") ?: "",
             status = doc.getString("status") ?: "active",
             defaultTeamId = doc.getString("defaultTeamId"),
             accessStatus = doc.getString("accessStatus") ?: "pending",
@@ -88,8 +89,15 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun getManageableUsers(actor: User): Result<List<User>> = withContext(Dispatchers.IO) {
-        getAllUsers().map { users ->
+        runCatching {
+            val snapshot = firestore.collection("users")
+                .whereEqualTo("storeId", actor.storeId)
+                .get()
+                .await()
+            
+            val users = snapshot.documents.map { mapUser(it) }
             val actorRole = actor.roleGlobal
+            
             users
                 .filter { it.uid != actor.uid }
                 .filter { target ->

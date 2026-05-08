@@ -89,7 +89,8 @@ class MainViewModel @Inject constructor(
                             authState = AuthState.Authenticated,
                             message = "Đăng nhập thành công",
                             currentUser = normalizedUser,
-                            activeTeamId = null
+                            activeTeamId = normalizedUser.storeId,
+                            activeStoreId = normalizedUser.storeId
                         ) 
                     }
 
@@ -250,9 +251,15 @@ class MainViewModel @Inject constructor(
     }
 
     private fun startObserveProducts() {
+        val storeId = _uiState.value.activeStoreId ?: _uiState.value.currentUser?.storeId
+        if (storeId.isNullOrEmpty()) {
+            _uiState.update { it.copy(message = "Không tìm thấy mã cửa hàng") }
+            return
+        }
+
         observeProductsJob?.cancel()
         observeProductsJob = viewModelScope.launch {
-            productRepository.getProductsRealtime().collect { result ->
+            productRepository.getProductsRealtime(storeId).collect { result ->
                 _uiState.update { it.copy(isLoadingProducts = true) }
                 result.onSuccess { products ->
                     _uiState.update {

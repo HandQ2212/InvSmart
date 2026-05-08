@@ -16,8 +16,9 @@ import javax.inject.Singleton
 class ProductRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
-    fun getProductsRealtime(): Flow<Result<List<Product>>> = callbackFlow {
+    fun getProductsRealtime(storeId: String): Flow<Result<List<Product>>> = callbackFlow {
         val registration = firestore.collection("products")
+            .whereEqualTo("storeId", storeId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(Result.failure(error))

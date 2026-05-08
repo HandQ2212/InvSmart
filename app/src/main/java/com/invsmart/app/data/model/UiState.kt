@@ -6,5 +6,6 @@ data class UiState(
     val isLoadingProducts: Boolean = false,
     val message: String = "",
     val currentUser: User? = null,
-    val activeTeamId: String? = null
+    val activeTeamId: String? = null, // Deprecated
+    val activeStoreId: String? = null
 )

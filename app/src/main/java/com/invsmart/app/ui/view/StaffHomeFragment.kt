@@ -83,8 +83,8 @@ class StaffHomeFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         // Refresh when user returns to app to keep invoice list up to date.
-        mainViewModel.uiState.value.currentUser?.uid?.let { uid ->
-            loadOrders(uid)
+        mainViewModel.uiState.value.currentUser?.let { user ->
+            loadOrders(user.storeId, user.uid)
         }
     }
 
@@ -93,11 +93,11 @@ class StaffHomeFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     mainViewModel.uiState
-                        .map { it.currentUser?.uid }
-                        .collect { uid ->
-                            if (!uid.isNullOrBlank() && uid != lastLoadedStaffUid) {
-                                lastLoadedStaffUid = uid
-                                loadOrders(uid)
+                        .collect { state ->
+                            val user = state.currentUser
+                            if (user != null && user.uid != lastLoadedStaffUid) {
+                                lastLoadedStaffUid = user.uid
+                                loadOrders(user.storeId, user.uid)
                             }
                         }
                 }
@@ -105,10 +105,10 @@ class StaffHomeFragment : Fragment() {
         }
     }
 
-    private fun loadOrders(staffUid: String) {
+    private fun loadOrders(storeId: String, staffUid: String) {
         binding.progressBar.visibility = View.VISIBLE
         viewLifecycleOwner.lifecycleScope.launch {
-            orderRepository.getOrdersByStaff(staffUid).onSuccess { orders ->
+            orderRepository.getOrdersByStaff(storeId, staffUid).onSuccess { orders ->
                 binding.progressBar.visibility = View.GONE
                 orderAdapter.submitList(orders.sortedByDescending { it.createdAt })
             }.onFailure {

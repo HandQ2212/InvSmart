@@ -243,9 +243,13 @@ class InventoryManagementFragment : Fragment() {
                             Toast.makeText(requireContext(), "Không tìm thấy tài khoản quản lý", Toast.LENGTH_SHORT).show()
                             return
                         }
-                        managerViewModel.addProduct(p, currentUser.uid)
+                        managerViewModel.addProduct(p, currentUser)
                     } else {
-                        managerViewModel.updateProduct(p)
+                        if (currentUser == null) {
+                            Toast.makeText(requireContext(), "Không tìm thấy tài khoản quản lý", Toast.LENGTH_SHORT).show()
+                            return
+                        }
+                        managerViewModel.updateProduct(p, currentUser)
                     }
                     dialog.dismiss()
                 }

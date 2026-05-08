@@ -39,7 +39,7 @@ class ManagerViewModel @Inject constructor(
 
     fun loadDashboard(actor: User) {
         viewModelScope.launch {
-            orderRepository.getTotalRevenue()
+            orderRepository.getTotalRevenue(actor.storeId)
                 .onSuccess { _revenue.value = it }
                 .onFailure { _managerMessage.value = it.localizedMessage ?: "Không tải được doanh thu" }
 
@@ -78,13 +78,14 @@ class ManagerViewModel @Inject constructor(
         _operationStatus.value = null
     }
 
-    fun addProduct(product: Product, managerUid: String) {
+    fun addProduct(product: Product, actor: User) {
         viewModelScope.launch {
             val now = com.google.firebase.Timestamp.now()
             val payload = product.copy(
                 productId = product.productId.ifEmpty { product.sku },
-                teamId = "",
-                createdBy = managerUid,
+                storeId = actor.storeId,
+                teamId = actor.storeId,
+                createdBy = actor.uid,
                 createdAt = now,
                 updatedAt = now
             )
@@ -92,9 +93,10 @@ class ManagerViewModel @Inject constructor(
         }
     }
 
-    fun updateProduct(product: Product) = viewModelScope.launch {
+    fun updateProduct(product: Product, actor: User) = viewModelScope.launch {
         val payload = product.copy(
-            teamId = "",
+            storeId = actor.storeId,
+            teamId = actor.storeId,
             updatedAt = com.google.firebase.Timestamp.now()
         )
         _operationStatus.value = productRepository.updateProduct(payload)

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.invsmart.app.data.model.Order
 import com.invsmart.app.data.model.OrderItem
 import com.invsmart.app.data.model.Product
+import com.invsmart.app.data.model.User
 import com.invsmart.app.data.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +48,7 @@ class StaffViewModel @Inject constructor(
         _orderCreationState.value = null
     }
 
-    fun submitOrder(staffUid: String, staffName: String, orderType: String = "sale") {
+    fun submitOrder(currentUser: User, orderType: String = "sale") {
         viewModelScope.launch {
             val selections = _selectedProducts.value
             if (selections.isEmpty()) return@launch
@@ -65,8 +66,9 @@ class StaffViewModel @Inject constructor(
             val totalAmount = selections.entries.sumOf { (product, qty) -> product.price * qty }
 
             val order = Order(
-                staffUid = staffUid,
-                staffName = staffName,
+                staffUid = currentUser.uid,
+                staffName = currentUser.fullName,
+                storeId = currentUser.storeId,
                 orderType = orderType,
                 items = orderItems,
                 totalQuantity = totalQty,

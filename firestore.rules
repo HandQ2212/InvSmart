@@ -36,6 +36,18 @@ service cloud.firestore {
         );
     }
 
+    function userStore(uid) {
+      return userDoc(uid).data.storeId;
+    }
+
+    function isSameStore(uid) {
+      return signedIn() && resource.data.storeId == userStore(uid);
+    }
+
+    function isIncomingSameStore(uid) {
+      return signedIn() && request.resource.data.storeId == userStore(uid);
+    }
+
     function existingUserRole() {
       return resource.data.isMaster == true || resource.data.roleGlobal == 'master'
         ? 'master'
@@ -68,50 +80,65 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isSelf(uid) || resource.data.storeId == userStore(request.auth.uid));
 
       allow create: if isSelf(uid);
 
       allow update: if isSelf(uid)
         || (
           isMaster(request.auth.uid)
+          && resource.data.storeId == userStore(request.auth.uid)
           && existingUserRole() != 'master'
           && (incomingUserRole() == 'manager' || incomingUserRole() == 'staff')
         )
         || (
           isManager(request.auth.uid)
+          && resource.data.storeId == userStore(request.auth.uid)
           && existingUserRole() == 'staff'
           && roleFieldsUnchanged()
         );
 
-      allow delete: if isMaster(request.auth.uid)
-        || (isManager(request.auth.uid) && existingUserRole() == 'staff');
+      allow delete: if (isMaster(request.auth.uid) || isManager(request.auth.uid)) 
+        && resource.data.storeId == userStore(request.auth.uid)
+        && existingUserRole() == 'staff';
     }
 
     match /products/{productId} {
-      allow read: if signedIn();
-      allow create, delete: if isManager(request.auth.uid);
-      allow update: if isManager(request.auth.uid)
-        || (signedIn() && stockQtyOnlyUpdate());
+      allow read: if signedIn() && isSameStore(request.auth.uid);
+      allow create: if isManager(request.auth.uid) && isIncomingSameStore(request.auth.uid);
+      allow update: if isManager(request.auth.uid) && isSameStore(request.auth.uid) && isIncomingSameStore(request.auth.uid)
+        || (signedIn() && stockQtyOnlyUpdate() && isSameStore(request.auth.uid));
+      allow delete: if isManager(request.auth.uid) && isSameStore(request.auth.uid);
     }
 
     match /orders/{orderId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn() && (
+      allow read: if signedIn() && isSameStore(request.auth.uid);
+      allow create: if signedIn() && isIncomingSameStore(request.auth.uid);
+      allow update: if signedIn() && isSameStore(request.auth.uid) && (
         resource.data.staffUid == request.auth.uid
         || isManager(request.auth.uid)
       );
-      allow delete: if isManager(request.auth.uid);
+      allow delete: if isManager(request.auth.uid) && isSameStore(request.auth.uid);
     }
 
     match /payments/{paymentId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isManager(request.auth.uid);
+      allow read, create, update: if signedIn() && isSameStore(request.auth.uid);
+      allow delete: if isManager(request.auth.uid) && isSameStore(request.auth.uid);
     }
 
-    match /teams/{teamId} {
-      allow read, write: if false;
+    match /stores/{storeId} {
+      allow read: if signedIn() && (userStore(request.auth.uid) == storeId);
+      allow write: if false; // Only App Admin (manual) for now
+    }
+
+    match /inventory_logs/{logId} {
+      allow read: if signedIn() && isSameStore(request.auth.uid);
+      allow create: if signedIn() && isIncomingSameStore(request.auth.uid);
+    }
+
+    match /categories/{categoryId} {
+      allow read: if signedIn() && isSameStore(request.auth.uid);
+      allow create, update, delete: if isManager(request.auth.uid) && isIncomingSameStore(request.auth.uid);
     }
 
     match /team_members/{membershipId} {

@@ -5,6 +5,7 @@ import com.google.firebase.Timestamp
 data class InventoryLog(
     val id: String = "",
     val product_id: String = "",
+    val storeId: String = "",
     val user_id: String = "",
     val type: String = "IN",
     val quantity_change: Int = 0,

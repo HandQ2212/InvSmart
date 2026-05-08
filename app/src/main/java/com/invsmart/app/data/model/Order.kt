@@ -7,6 +7,7 @@ data class Order(
     @DocumentId
     val orderId: String = "",
     val orderCode: String = "",
+    val storeId: String = "",
     val staffUid: String = "",
     val staffName: String = "",
     val createdAt: Timestamp = Timestamp.now(),

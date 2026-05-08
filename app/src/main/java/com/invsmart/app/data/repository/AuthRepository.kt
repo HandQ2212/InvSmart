@@ -41,7 +41,6 @@ class AuthRepository @Inject constructor(
             if (userQuery.isEmpty) {
                 throw Exception("Email không tồn tại trong hệ thống.")
             }
-
             auth.sendPasswordResetEmail(email).await()
             Unit
         }

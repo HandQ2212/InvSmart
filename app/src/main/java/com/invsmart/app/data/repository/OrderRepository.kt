@@ -51,10 +51,23 @@ class OrderRepository @Inject constructor(
         }
     }
 
-    suspend fun getOrdersByStaff(staffUid: String): Result<List<Order>> = withContext(Dispatchers.IO) {
+    suspend fun getOrdersByStaff(storeId: String, staffUid: String): Result<List<Order>> = withContext(Dispatchers.IO) {
         runCatching {
             val snapshot = firestore.collection("orders")
+                .whereEqualTo("storeId", storeId)
                 .whereEqualTo("staffUid", staffUid)
+                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { it.toObject(Order::class.java) }
+        }
+    }
+
+    suspend fun getOrdersByStore(storeId: String): Result<List<Order>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val snapshot = firestore.collection("orders")
+                .whereEqualTo("storeId", storeId)
+                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .get()
                 .await()
             snapshot.documents.mapNotNull { it.toObject(Order::class.java) }
@@ -81,9 +94,10 @@ class OrderRepository @Inject constructor(
         }
     }
 
-    suspend fun getTotalRevenue(): Result<Double> = withContext(Dispatchers.IO) {
+    suspend fun getTotalRevenue(storeId: String): Result<Double> = withContext(Dispatchers.IO) {
         runCatching {
             val snapshot = firestore.collection("orders")
+                .whereEqualTo("storeId", storeId)
                 .whereEqualTo("status", "paid")
                 .get()
                 .await()

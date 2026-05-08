@@ -61,8 +61,7 @@ class OrderDetailFragment : Fragment() {
                 binding.btnConfirm.isEnabled = false
                 binding.progressBar.visibility = View.VISIBLE
                 staffViewModel.submitOrder(
-                    staffUid = user.uid,
-                    staffName = user.fullName.takeIf { it.isNotEmpty() } ?: user.email,
+                    currentUser = user,
                     orderType = "sale"
                 )
             } else {
