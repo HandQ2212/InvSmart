@@ -63,11 +63,17 @@ class OrderRepository @Inject constructor(
         }
     }
 
-    suspend fun getOrdersByStore(storeId: String): Result<List<Order>> = withContext(Dispatchers.IO) {
+    suspend fun getOrdersByStore(chainId: String = "", storeId: String = ""): Result<List<Order>> = withContext(Dispatchers.IO) {
         runCatching {
-            val snapshot = firestore.collection("orders")
-                .whereEqualTo("storeId", storeId)
-                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            val baseQuery = firestore.collection("orders")
+            val query = if (storeId.isNotEmpty()) {
+                baseQuery.whereEqualTo("storeId", storeId)
+            } else if (chainId.isNotEmpty()) {
+                baseQuery.whereEqualTo("chainId", chainId)
+            } else {
+                baseQuery
+            }
+            val snapshot = query.orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .get()
                 .await()
             snapshot.documents.mapNotNull { it.toObject(Order::class.java) }
@@ -94,11 +100,17 @@ class OrderRepository @Inject constructor(
         }
     }
 
-    suspend fun getTotalRevenue(storeId: String): Result<Double> = withContext(Dispatchers.IO) {
+    suspend fun getTotalRevenue(chainId: String = "", storeId: String = ""): Result<Double> = withContext(Dispatchers.IO) {
         runCatching {
-            val snapshot = firestore.collection("orders")
-                .whereEqualTo("storeId", storeId)
-                .whereEqualTo("status", "paid")
+            val baseQuery = firestore.collection("orders")
+            val query = if (storeId.isNotEmpty()) {
+                baseQuery.whereEqualTo("storeId", storeId)
+            } else if (chainId.isNotEmpty()) {
+                baseQuery.whereEqualTo("chainId", chainId)
+            } else {
+                baseQuery
+            }
+            val snapshot = query.whereEqualTo("status", "paid")
                 .get()
                 .await()
 

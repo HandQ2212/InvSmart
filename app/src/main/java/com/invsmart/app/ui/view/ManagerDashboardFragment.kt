@@ -33,9 +33,11 @@ class ManagerDashboardFragment : Fragment() {
         if (role == "master") {
             binding.toolbar.title = "Master Dashboard"
             binding.tvWelcome.text = "Xin chào, Master!"
+            binding.layoutMasterActions.visibility = View.VISIBLE
         } else {
             binding.toolbar.title = "Manager Dashboard"
             binding.tvWelcome.text = "Xin chào, Quản lý!"
+            binding.layoutMasterActions.visibility = View.GONE
         }
     }
 
@@ -55,6 +57,8 @@ class ManagerDashboardFragment : Fragment() {
             applyRoleHeader(it.roleGlobal)
             managerViewModel.loadDashboard(it)
         }
+
+        setupRevenueList()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -93,9 +97,41 @@ class ManagerDashboardFragment : Fragment() {
             findNavController().navigate(R.id.action_dashboard_to_staffManager)
         }
 
+        binding.cardBranch.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_branchManager)
+        }
+
+        binding.cardCatalog.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_catalogManager)
+        }
+
         binding.btnLogout.setOnClickListener {
             mainViewModel.logout()
             findNavController().navigate(R.id.action_global_logout)
+        }
+    }
+
+    private fun setupRevenueList() {
+        val adapter = BranchRevenueAdapter()
+        binding.rvBranchRevenue.adapter = adapter
+        binding.rvBranchRevenue.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                managerViewModel.stores.collect { stores ->
+                    val revenueMap = managerViewModel.branchRevenueMap.value
+                    adapter.submitData(stores, revenueMap)
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                managerViewModel.branchRevenueMap.collect { revenueMap ->
+                    val stores = managerViewModel.stores.value
+                    adapter.submitData(stores, revenueMap)
+                }
+            }
         }
     }
 

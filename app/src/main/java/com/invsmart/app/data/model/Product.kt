@@ -6,6 +6,7 @@ import com.google.firebase.firestore.PropertyName
 data class Product(
     val productId: String = "",
     val teamId: String = "", // Deprecated
+    val chainId: String = "",
     val storeId: String = "",
     val sku: String = "",
     val name: String = "",

@@ -28,8 +28,15 @@ class UserAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(user: User) {
             val role = user.roleGlobal.ifBlank { user.role.ifBlank { "staff" } }
-            binding.tvEmail.text = user.email
-            binding.tvRole.text = "Role: ${role.uppercase()}"
+            val roleDisplay = when(role) {
+                "admin" -> "Admin"
+                "master" -> "Chủ chuỗi"
+                "manager" -> "Quản lý"
+                "unassigned" -> "Chưa gán"
+                else -> "Nhân viên"
+            }
+            binding.tvUserEmail.text = user.email
+            binding.tvRole.text = "Quyền: $roleDisplay"
 
             val canChange = canToggleRole(user) && (role == "manager" || role == "staff")
             binding.btnChangeRole.visibility = if (canChange) View.VISIBLE else View.GONE

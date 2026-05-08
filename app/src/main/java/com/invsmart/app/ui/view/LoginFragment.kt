@@ -83,24 +83,7 @@ class LoginFragment : Fragment() {
                         }
                         is AuthState.Authenticated -> {
                             binding.progressBar.visibility = View.GONE
-                            state.currentUser?.let { user ->
-                                if (hasNavigatedAfterAuth) {
-                                    return@collect
-                                }
-
-                                val navController = findNavController()
-                                if (navController.currentDestination?.id != R.id.loginFragment) {
-                                    return@collect
-                                }
-
-                                hasNavigatedAfterAuth = true
-                                val effectiveRole = user.roleGlobal.ifBlank { user.role }
-                                if (effectiveRole == "master" || effectiveRole == "manager" || user.isMaster) {
-                                    navController.navigate(R.id.action_loginFragment_to_nav_manager)
-                                } else {
-                                    navController.navigate(R.id.action_loginFragment_to_nav_staff)
-                                }
-                            }
+                            // Để MainActivity tự điều hướng dựa trên Role mới nhất
                         }
                         is AuthState.Error -> {
                             binding.progressBar.visibility = View.GONE

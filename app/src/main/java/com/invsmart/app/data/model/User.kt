@@ -11,9 +11,10 @@ data class User(
     val email: String = "",
     val fullName: String = "",
     val role: String = "", // Legacy field
-    val roleGlobal: String = "staff", // "master", "manager" hoặc "staff"
+    val roleGlobal: String = "unassigned", // "admin", "master", "manager", "staff" hoặc "unassigned"
     val isMaster: Boolean = false, // Deprecated, use roleGlobal == "master"
-    val storeId: String = "", // Current store the user belongs to
+    val chainId: String = "", // The chain the user belongs to
+    val storeId: String = "", // The specific branch/store the user belongs to
     val status: String = "active",
     val defaultTeamId: String? = null, // Kept for backward compatibility
     val accessStatus: String = "pending",

@@ -16,10 +16,16 @@ import javax.inject.Singleton
 class ProductRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
-    fun getProductsRealtime(storeId: String): Flow<Result<List<Product>>> = callbackFlow {
-        val registration = firestore.collection("products")
-            .whereEqualTo("storeId", storeId)
-            .addSnapshotListener { snapshot, error ->
+    fun getProductsRealtime(chainId: String = "", storeId: String = ""): Flow<Result<List<Product>>> = callbackFlow {
+        val baseQuery = firestore.collection("products")
+        val query = if (storeId.isNotEmpty()) {
+            baseQuery.whereEqualTo("storeId", storeId)
+        } else if (chainId.isNotEmpty()) {
+            baseQuery.whereEqualTo("chainId", chainId)
+        } else {
+            baseQuery
+        }
+        val registration = query.addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(Result.failure(error))
                     return@addSnapshotListener

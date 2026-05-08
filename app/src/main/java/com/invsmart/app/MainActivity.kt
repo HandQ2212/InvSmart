@@ -10,6 +10,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.invsmart.app.data.local.SessionManager
 import com.invsmart.app.data.model.AuthState
+import com.invsmart.app.data.model.User
 import com.invsmart.app.databinding.ActivityMainBinding
 import com.invsmart.app.ui.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,15 +41,25 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     when (state.authState) {
-                        is AuthState.Unauthenticated -> {
-                            val canNavigateToAuth = navController.currentDestination?.id != R.id.loginFragment &&
-                                navController.graph.findNode(R.id.action_global_logout) != null
-                            if (canNavigateToAuth) {
-                                navController.navigate(R.id.action_global_logout)
+                        is AuthState.Authenticated -> {
+                            val role = state.currentUser?.roleGlobal ?: sessionManager.getRole()
+                            val startDest = resolveStartDestination(state.currentUser)
+                            
+                            android.util.Log.d("NAV", "Authenticated: role=$role, startDest=$startDest, currentParent=${navController.currentDestination?.parent?.id}")
+
+                            // Buộc phải setGraph nếu vùng hiện tại không khớp
+                            if (navController.currentDestination?.parent?.id != startDest) {
+                                val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
+                                navGraph.setStartDestination(startDest)
+                                navController.setGraph(navGraph, null)
                             }
                         }
-                        is AuthState.Authenticated -> {
-                            // Neu mo app truc tiep vao nav_manager/nav_staff thi khong can dieu huong lai.
+                        is AuthState.Unauthenticated -> {
+                            if (navController.currentDestination?.parent?.id != R.id.nav_auth) {
+                                val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
+                                navGraph.setStartDestination(R.id.nav_auth)
+                                navController.setGraph(navGraph, null)
+                            }
                         }
                         else -> {}
                     }
@@ -64,19 +75,21 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
-            navGraph.setStartDestination(resolveStartDestination())
+            navGraph.setStartDestination(resolveStartDestination(null))
             navController.setGraph(navGraph, null)
         }
     }
 
-    private fun resolveStartDestination(): Int {
-        if (!sessionManager.isLoggedIn()) {
-            return R.id.nav_auth
-        }
-
-        return when (sessionManager.getRole().lowercase()) {
-            "master", "manager" -> R.id.nav_manager
+    private fun resolveStartDestination(user: User?): Int {
+        val role = user?.roleGlobal?.lowercase() ?: sessionManager.getRole().lowercase()
+        android.util.Log.d("NAV", "Resolving destination for role: $role")
+        
+        return when (role) {
+            "admin" -> R.id.nav_admin
+            "master" -> R.id.nav_manager
+            "manager" -> R.id.nav_manager
             "staff" -> R.id.nav_staff
+            "unassigned" -> R.id.nav_unassigned
             else -> R.id.nav_auth
         }
     }

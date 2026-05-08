@@ -16,6 +16,12 @@
         <action
             android:id="@+id/action_dashboard_to_staffManager"
             app:destination="@id/staffManagerFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_branchManager"
+            app:destination="@id/branchManagementFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_catalogManager"
+            app:destination="@id/catalogManagementFragment" />
     </fragment>
 
     <fragment
@@ -29,4 +35,16 @@
         android:name="com.invsmart.app.ui.view.StaffManagerFragment"
         android:label="fragment_staff_manager"
         tools:layout="@layout/fragment_staff_manager" />
+
+    <fragment
+        android:id="@+id/branchManagementFragment"
+        android:name="com.invsmart.app.ui.view.BranchManagementFragment"
+        android:label="Quản lý chi nhánh"
+        tools:layout="@layout/fragment_branch_management" />
+
+    <fragment
+        android:id="@+id/catalogManagementFragment"
+        android:name="com.invsmart.app.ui.view.CatalogManagementFragment"
+        android:label="Danh mục sản phẩm"
+        tools:layout="@layout/fragment_catalog_management" />
 </navigation>

@@ -5,41 +5,41 @@ import androidx.lifecycle.viewModelScope
 import com.invsmart.app.data.local.SessionManager
 import com.invsmart.app.data.model.AuthState
 import com.invsmart.app.data.model.UiState
+import com.invsmart.app.data.model.User
 import com.invsmart.app.data.repository.AuthRepository
 import com.invsmart.app.data.repository.ProductRepository
+import com.invsmart.app.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import com.invsmart.app.data.repository.UserRepository
-import com.invsmart.app.data.model.User
+import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val productRepository: ProductRepository,
     private val userRepository: UserRepository,
+    private val productRepository: ProductRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-    private var observeProductsJob: Job? = null
-    private val passwordSpecialCharRegex = Regex("[^A-Za-z0-9]")
 
     init {
-        if (authRepository.isLoggedIn()) {
-            _uiState.update { it.copy(authState = AuthState.Loading, message = "Đang tải thông tin...") }
-            loadUserAndStartProducts()
-        }
+        checkAuthStatus()
     }
 
-    private fun loadUserAndStartProducts() {
+    fun checkAuthStatus() {
+        loadUserAndStartProducts()
+    }
+
+    fun loadUserAndStartProducts() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingProducts = true) }
             val uid = authRepository.getCurrentUserId()
             if (uid != null) {
                 userRepository.getUser(uid).onSuccess { user ->
@@ -47,237 +47,200 @@ class MainViewModel @Inject constructor(
                         authRepository.logout()
                         _uiState.update {
                             it.copy(
-                                authState = AuthState.Error("Tài khoản chưa được cấu hình trong hệ thống. Vui lòng liên hệ quản lý."),
+                                authState = AuthState.Error("Tài khoản chưa được cấu hình."),
                                 currentUser = null,
-                                activeTeamId = null,
-                                products = emptyList(),
                                 isLoadingProducts = false
                             )
                         }
                         return@onSuccess
                     }
 
-                    if (user.accessStatus.equals("blocked", ignoreCase = true)
-                        || user.accessStatus.equals("disabled", ignoreCase = true)
-                    ) {
+                    if (user.accessStatus == "blocked") {
                         authRepository.logout()
                         _uiState.update {
                             it.copy(
-                                authState = AuthState.Error("Tài khoản đã bị khóa. Vui lòng liên hệ quản lý."),
+                                authState = AuthState.Error("Tài khoản đã bị khóa."),
                                 currentUser = null,
-                                activeTeamId = null,
-                                products = emptyList(),
                                 isLoadingProducts = false
                             )
                         }
                         return@onSuccess
                     }
 
-                    val normalizedRole = when {
-                        user.isMaster || user.roleGlobal.equals("master", ignoreCase = true) -> "master"
-                        user.roleGlobal.equals("manager", ignoreCase = true)
-                            || user.role.equals("manager", ignoreCase = true) -> "manager"
-                        else -> "staff"
-                    }
-                    val normalizedUser = user.copy(
-                        roleGlobal = normalizedRole,
-                        isMaster = user.isMaster || normalizedRole == "master"
-                    )
+                    val normalizedRole = normalizeRole(user)
+                    sessionManager.saveRole(normalizedRole)
+                    sessionManager.saveStoreId(user.storeId)
 
                     _uiState.update {
                         it.copy(
                             authState = AuthState.Authenticated,
-                            message = "Đăng nhập thành công",
-                            currentUser = normalizedUser,
-                            activeTeamId = normalizedUser.storeId,
-                            activeStoreId = normalizedUser.storeId
-                        ) 
+                            currentUser = user.copy(roleGlobal = normalizedRole),
+                            isLoadingProducts = false
+                        )
                     }
-
-                    sessionManager.saveLoginSession(normalizedRole)
-
-                    startObserveProducts()
-                }.onFailure {
-                    val reason = it.localizedMessage ?: it.message ?: "unknown"
+                    android.util.Log.d("AUTH", "LOGIN SUCCESS: Role is $normalizedRole")
+                }.onFailure { e ->
                     _uiState.update {
-                        it.copy(authState = AuthState.Error("Không thể tải thông tin user: $reason"))
+                        it.copy(
+                            authState = AuthState.Error(e.message ?: "Lỗi tải dữ liệu"),
+                            isLoadingProducts = false
+                        )
                     }
                 }
             } else {
-                _uiState.update { it.copy(authState = AuthState.Unauthenticated) }
+                _uiState.update {
+                    it.copy(
+                        authState = AuthState.Unauthenticated,
+                        currentUser = null,
+                        isLoadingProducts = false
+                    )
+                }
             }
         }
     }
 
+    private fun normalizeRole(user: User): String {
+        val rGlobal = user.roleGlobal.trim().lowercase()
+        val rLegacy = user.role.trim().lowercase()
+        
+        android.util.Log.d("DEBUG_ROLE", "RAW DATA from Firestore -> roleGlobal: '${user.roleGlobal}', role: '${user.role}', isMaster: ${user.isMaster}")
+        
+        val role = when {
+            rGlobal == "admin" || rLegacy == "admin" -> "admin"
+            user.isMaster || rGlobal == "master" || rLegacy == "master" -> "master"
+            rGlobal == "manager" || rLegacy == "manager" -> "manager"
+            rGlobal == "unassigned" -> "unassigned"
+            else -> "staff"
+        }
+        android.util.Log.d("DEBUG_ROLE", "FINAL Result for ${user.email} -> $role")
+        return role
+    }
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(authState = AuthState.Loading, message = "Đang đăng nhập...") }
+            _uiState.update { it.copy(authState = AuthState.Loading) }
             authRepository.login(email, password)
                 .onSuccess {
-                    loadUserAndStartProducts()
+                    checkAuthStatus()
                 }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(authState = AuthState.Error(error.localizedMessage ?: "Đăng nhập thất bại"))
-                    }
+                .onFailure { e ->
+                    _uiState.update { it.copy(authState = AuthState.Error(e.message ?: "Đăng nhập thất bại")) }
                 }
         }
     }
 
     fun register(email: String, password: String) {
-        val passwordValidationError = validatePassword(password)
-        if (email.isBlank() || passwordValidationError != null) {
-            _uiState.update {
-                it.copy(authState = AuthState.Error(passwordValidationError ?: "Email không hợp lệ"))
-            }
-            return
-        }
-
         viewModelScope.launch {
-            _uiState.update { it.copy(authState = AuthState.Loading, message = "Đang tạo tài khoản...") }
+            _uiState.update { it.copy(authState = AuthState.Loading) }
             authRepository.register(email, password)
                 .onSuccess {
-                    val uid = authRepository.getCurrentUserId()
-                    if (uid != null) {
-                        val newUser = User(
-                            uid = uid,
-                            email = email.trim().lowercase(),
-                            roleGlobal = "staff",
-                            isMaster = false,
-                            accessStatus = "active"
-                        )
-                        userRepository.createUser(newUser).onSuccess {
-                            loadUserAndStartProducts()
-                        }.onFailure { error ->
-                            _uiState.update {
-                                it.copy(
-                                    authState = AuthState.Error(
-                                        error.localizedMessage ?: "Tạo hồ sơ người dùng thất bại"
-                                    )
-                                )
-                            }
-                        }
-                    } else {
+                    val uid = authRepository.getCurrentUserId() ?: return@onSuccess
+                    val newUser = User(
+                        uid = uid,
+                        email = email,
+                        roleGlobal = "unassigned",
+                        accessStatus = "pending"
+                    )
+                    userRepository.createUser(newUser).onSuccess {
                         _uiState.update {
-                            it.copy(authState = AuthState.Error("Không lấy được thông tin tài khoản mới"))
+                            it.copy(
+                                authState = AuthState.Authenticated,
+                                currentUser = newUser
+                            )
                         }
                     }
                 }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(authState = AuthState.Error(error.localizedMessage ?: "Tạo tài khoản thất bại"))
-                    }
-                }
-        }
-    }
-
-    private fun validatePassword(password: String): String? {
-        if (password.length < 8) {
-            return "Mật khẩu phải có ít nhất 8 ký tự"
-        }
-        if (!password.any { it.isDigit() }) {
-            return "Mật khẩu phải có ít nhất 1 chữ số"
-        }
-        if (!password.any { it.isLowerCase() }) {
-            return "Mật khẩu phải có ít nhất 1 chữ cái thường"
-        }
-        if (!password.any { it.isUpperCase() }) {
-            return "Mật khẩu phải có ít nhất 1 chữ cái hoa"
-        }
-        if (!passwordSpecialCharRegex.containsMatchIn(password)) {
-            return "Mật khẩu phải có ít nhất 1 ký tự đặc biệt"
-        }
-        return null
-    }
-
-    fun resetPassword(email: String, onResult: (Boolean, String) -> Unit) {
-        viewModelScope.launch {
-            val normalizedEmail = email.trim().lowercase()
-            authRepository.checkAndResetPassword(normalizedEmail)
-                .onSuccess {
-                    onResult(true, "Link khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra email của bạn.")
-                }
-                .onFailure { error ->
-                    val errorMessage = when (error.message) {
-                        "Email không tồn tại trong hệ thống." -> "Email này chưa được đăng ký trong hệ thống InvSmart."
-                        else -> error.localizedMessage ?: "Đã có lỗi xảy ra, vui lòng thử lại sau."
-                    }
-
-                    onResult(false, errorMessage)
+                .onFailure { e ->
+                    _uiState.update { it.copy(authState = AuthState.Error(e.message ?: "Đăng ký thất bại")) }
                 }
         }
     }
 
     fun logout() {
-        observeProductsJob?.cancel()
-        authRepository.logout()
-        sessionManager.clearSession()
-        _uiState.update {
-            it.copy(
-                authState = AuthState.Unauthenticated,
-                products = emptyList(),
-                isLoadingProducts = false,
-                message = "Đã đăng xuất",
-                currentUser = null,
-                activeTeamId = null
-            )
+        viewModelScope.launch {
+            authRepository.logout()
+            sessionManager.clear()
+            _uiState.update {
+                it.copy(
+                    authState = AuthState.Unauthenticated,
+                    currentUser = null,
+                    products = emptyList()
+                )
+            }
+        }
+    }
+
+    fun resetPassword(email: String, callback: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            authRepository.checkAndResetPassword(email)
+                .onSuccess { callback(true, "Yêu cầu đã được gửi.") }
+                .onFailure { callback(false, it.message ?: "Lỗi.") }
         }
     }
 
     fun updateProfile(fullName: String, phoneNumber: String) {
-        val uid = _uiState.value.currentUser?.uid ?: return
+        val uid = authRepository.getCurrentUserId() ?: return
         viewModelScope.launch {
-            userRepository.updateProfile(uid, fullName.trim(), phoneNumber.trim())
-                .onSuccess {
-                    val current = _uiState.value.currentUser
-                    if (current != null) {
-                        _uiState.update {
-                            it.copy(
-                                currentUser = current.copy(
-                                    fullName = fullName.trim(),
-                                    phoneNumber = phoneNumber.trim()
-                                ),
-                                message = "Cập nhật thông tin thành công"
-                            )
-                        }
-                    }
-                }
-                .onFailure {
-                    _uiState.update { state ->
-                        state.copy(message = it.localizedMessage ?: "Không thể cập nhật thông tin")
-                    }
-                }
+            userRepository.updateProfile(uid, fullName, phoneNumber).onSuccess {
+                checkAuthStatus()
+            }
         }
     }
 
-    private fun startObserveProducts() {
-        val storeId = _uiState.value.activeStoreId ?: _uiState.value.currentUser?.storeId
-        if (storeId.isNullOrEmpty()) {
-            _uiState.update { it.copy(message = "Không tìm thấy mã cửa hàng") }
-            return
-        }
+    fun runMigration() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingProducts = true) }
+            try {
+                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val defaultChainId = "default_chain"
+                val defaultStoreId = "default_store"
 
-        observeProductsJob?.cancel()
-        observeProductsJob = viewModelScope.launch {
-            productRepository.getProductsRealtime(storeId).collect { result ->
-                _uiState.update { it.copy(isLoadingProducts = true) }
-                result.onSuccess { products ->
-                    _uiState.update {
-                        it.copy(
-                            products = products,
-                            isLoadingProducts = false,
-                            message = "Tải ${products.size} sản phẩm"
-                        )
-                    }
-                }.onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isLoadingProducts = false,
-                            message = error.localizedMessage ?: "Không thể tải sản phẩm"
-                        )
+                // 1. Tạo Chuỗi mặc định (nếu chưa có)
+                android.util.Log.d("MIGRATION", "Creating default chain...")
+                db.collection("chains").document(defaultChainId).set(mapOf(
+                    "chainId" to defaultChainId,
+                    "name" to "Chuỗi mặc định",
+                    "createdAt" to com.google.firebase.Timestamp.now()
+                )).await()
+
+                // 2. Tạo Cửa hàng mặc định (nếu chưa có)
+                android.util.Log.d("MIGRATION", "Creating default store...")
+                db.collection("stores").document(defaultStoreId).set(mapOf(
+                    "storeId" to defaultStoreId,
+                    "chainId" to defaultChainId,
+                    "name" to "Cửa hàng mặc định",
+                    "address" to "Địa chỉ mặc định",
+                    "createdAt" to com.google.firebase.Timestamp.now()
+                )).await()
+
+                // 3. Cập nhật toàn bộ User
+                val users = userRepository.getAllUsers().getOrNull() ?: emptyList()
+                users.forEach { user ->
+                    if (user.roleGlobal != "admin") {
+                        db.collection("users").document(user.uid).update(mapOf(
+                            "chainId" to defaultChainId,
+                            "storeId" to (user.storeId.ifEmpty { defaultStoreId }),
+                            "roleGlobal" to (if (user.isMaster) "master" else if (user.role == "manager") "manager" else "staff")
+                        )).await()
                     }
                 }
+
+                // 4. Cập nhật Sản phẩm và Đơn hàng
+                val products = db.collection("products").get().await()
+                products.forEach { doc ->
+                    doc.reference.update(mapOf("chainId" to defaultChainId, "storeId" to defaultStoreId)).await()
+                }
+
+                val orders = db.collection("orders").get().await()
+                orders.forEach { doc ->
+                    doc.reference.update(mapOf("chainId" to defaultChainId, "storeId" to defaultStoreId)).await()
+                }
+
+                android.util.Log.d("MIGRATION", "DATABASE INITIALIZED SUCCESSFULLY!")
+            } catch (e: Exception) {
+                android.util.Log.e("MIGRATION", "Migration Failed: ${e.message}")
             }
+            _uiState.update { it.copy(isLoadingProducts = false) }
         }
     }
 }

@@ -1,13 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
     app:startDestination="@id/nav_auth">
 
-    <include app:graph="@navigation/nav_auth"/>
-    <include app:graph="@navigation/nav_manager"/>
-    <include app:graph="@navigation/nav_staff"/>
+    <!-- Auth Flow -->
+    <include android:id="@+id/nav_auth" app:graph="@navigation/nav_auth" />
 
+    <!-- Admin Flow -->
+    <include android:id="@+id/nav_admin" app:graph="@navigation/nav_admin" />
+
+    <!-- Manager Flow -->
+    <include android:id="@+id/nav_manager" app:graph="@navigation/nav_manager" />
+
+    <!-- Staff Flow -->
+    <include android:id="@+id/nav_staff" app:graph="@navigation/nav_staff" />
+
+    <!-- Unassigned Flow -->
+    <include android:id="@+id/nav_unassigned" app:graph="@navigation/nav_unassigned" />
+
+    <!-- Global Actions -->
     <action
         android:id="@+id/action_global_logout"
         app:destination="@id/nav_auth"

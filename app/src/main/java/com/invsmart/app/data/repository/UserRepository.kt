@@ -5,6 +5,9 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.QueryDocumentSnapshot
 import com.invsmart.app.data.model.User
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -17,9 +20,12 @@ class UserRepository @Inject constructor(
     private fun normalizeRole(roleGlobal: String?, roleLegacy: String?, isMaster: Boolean): String {
         val global = roleGlobal?.trim()?.lowercase().orEmpty()
         val legacy = roleLegacy?.trim()?.lowercase().orEmpty()
+        
         return when {
+            global == "admin" || legacy == "admin" -> "admin"
             isMaster || global == "master" -> "master"
             global == "manager" || legacy == "manager" -> "manager"
+            global == "unassigned" -> "unassigned"
             else -> "staff"
         }
     }
@@ -41,6 +47,7 @@ class UserRepository @Inject constructor(
             role = doc.getString("role") ?: "",
             roleGlobal = normalizedRole,
             isMaster = isMaster || normalizedRole == "master",
+            chainId = doc.getString("chainId") ?: "",
             storeId = doc.getString("storeId") ?: doc.getString("defaultTeamId") ?: "",
             status = doc.getString("status") ?: "active",
             defaultTeamId = doc.getString("defaultTeamId"),
@@ -90,10 +97,14 @@ class UserRepository @Inject constructor(
 
     suspend fun getManageableUsers(actor: User): Result<List<User>> = withContext(Dispatchers.IO) {
         runCatching {
-            val snapshot = firestore.collection("users")
-                .whereEqualTo("storeId", actor.storeId)
-                .get()
-                .await()
+            val baseQuery = firestore.collection("users")
+            val query = when (actor.roleGlobal) {
+                "admin" -> baseQuery // Admin sees everyone (but logic below filters)
+                "master" -> baseQuery.whereEqualTo("chainId", actor.chainId)
+                "manager" -> baseQuery.whereEqualTo("storeId", actor.storeId)
+                else -> baseQuery.whereEqualTo("uid", "none")
+            }
+            val snapshot = query.get().await()
             
             val users = snapshot.documents.map { mapUser(it) }
             val actorRole = actor.roleGlobal
@@ -102,6 +113,7 @@ class UserRepository @Inject constructor(
                 .filter { it.uid != actor.uid }
                 .filter { target ->
                     when (actorRole) {
+                        "admin" -> target.roleGlobal == "master"
                         "master" -> target.roleGlobal == "manager" || target.roleGlobal == "staff"
                         "manager" -> target.roleGlobal == "staff"
                         else -> false
@@ -130,6 +142,14 @@ class UserRepository @Inject constructor(
             Unit
         }
     }
+
+    fun getUnassignedUsers(): Flow<List<User>> = firestore.collection("users")
+        .snapshots()
+        .map { snapshot ->
+            snapshot.documents
+                .map { mapUser(it) }
+                .filter { it.roleGlobal != "admin" }
+        }
 
     suspend fun updateProfile(uid: String, fullName: String, phoneNumber: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {

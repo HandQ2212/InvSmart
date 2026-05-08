@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_admin"
+    app:startDestination="@id/adminDashboardFragment">
+
+    <fragment
+        android:id="@+id/adminDashboardFragment"
+        android:name="com.invsmart.app.ui.view.AdminDashboardFragment"
+        android:label="Admin Dashboard"
+        tools:layout="@layout/fragment_admin_dashboard">
+        <action
+            android:id="@+id/action_adminDashboard_to_chainManager"
+            app:destination="@id/chainManagerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/chainManagerFragment"
+        android:name="com.invsmart.app.ui.view.ChainManagerFragment"
+        android:label="Quản lý Cửa hàng"
+        tools:layout="@layout/fragment_chain_manager">
+        <action
+            android:id="@+id/action_chainManager_to_userSelection"
+            app:destination="@id/userSelectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/userSelectionFragment"
+        android:name="com.invsmart.app.ui.view.UserSelectionFragment"
+        android:label="Chọn người mời"
+        tools:layout="@layout/fragment_user_selection">
+        <argument
+            android:name="chainId"
+            app:argType="string" />
+        <argument
+            android:name="role"
+            app:argType="string" />
+        <argument
+            android:name="storeName"
+            app:argType="string" />
+    </fragment>
+
+</navigation>
