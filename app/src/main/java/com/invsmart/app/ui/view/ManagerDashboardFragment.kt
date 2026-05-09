@@ -1,5 +1,7 @@
 package com.invsmart.app.ui.view
 
+import com.invsmart.app.data.model.Store
+
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +16,7 @@ import androidx.navigation.fragment.findNavController
 import com.invsmart.app.R
 import com.invsmart.app.databinding.FragmentManagerDashboardBinding
 import com.invsmart.app.ui.MainViewModel
+import com.invsmart.app.ui.adapter.BranchRevenueAdapter
 import com.invsmart.app.ui.viewmodel.ManagerViewModel
 import com.invsmart.app.util.VndFormatter
 import dagger.hilt.android.AndroidEntryPoint

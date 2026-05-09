@@ -91,6 +91,10 @@ class InventoryManagementFragment : Fragment() {
             showProductDialog(null)
         }
 
+        binding.btnImportCatalog.setOnClickListener {
+            showCatalogImportDialog()
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -113,6 +117,57 @@ class InventoryManagementFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun showCatalogImportDialog() {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.fragment_catalog_management, null)
+        // Cleanup the dialog view (it's a full fragment layout)
+        dialogView.findViewById<View>(R.id.toolbar).visibility = View.GONE
+        dialogView.findViewById<View>(R.id.btnAddCatalogItem).visibility = View.GONE
+
+        val rvCatalog = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvCatalog)
+        val adapter = com.invsmart.app.ui.adapter.CatalogProductAdapter { product ->
+            showImportQuantityDialog(product)
+        }
+        rvCatalog.adapter = adapter
+        rvCatalog.layoutManager = LinearLayoutManager(requireContext())
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle("Nhập kho từ danh mục")
+            .setView(dialogView)
+            .setNegativeButton("Đóng", null)
+            .create()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                managerViewModel.catalogProducts.collect { products ->
+                    adapter.submitList(products)
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showImportQuantityDialog(product: Product) {
+        val input = EditText(requireContext()).apply {
+            hint = "Số lượng nhập"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Nhập ${product.name}")
+            .setMessage("Nhập số lượng hàng vào kho:")
+            .setView(input)
+            .setPositiveButton("Nhập") { _, _ ->
+                val qty = input.text.toString().toIntOrNull() ?: 0
+                if (qty > 0) {
+                    mainViewModel.uiState.value.currentUser?.let { actor ->
+                        managerViewModel.importFromCatalog(product, qty, actor)
+                    }
+                }
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
     }
 
     private fun showProductDialog(productToEdit: Product?) {

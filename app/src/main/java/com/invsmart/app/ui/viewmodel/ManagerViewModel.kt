@@ -3,14 +3,21 @@ package com.invsmart.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.invsmart.app.data.model.Product
+import com.invsmart.app.data.model.Store
 import com.invsmart.app.data.model.User
 import com.invsmart.app.data.repository.OrderRepository
 import com.invsmart.app.data.repository.ProductRepository
+import com.invsmart.app.data.repository.StoreRepository
 import com.invsmart.app.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,7 +25,9 @@ import javax.inject.Inject
 class ManagerViewModel @Inject constructor(
     private val productRepository: ProductRepository,
     private val orderRepository: OrderRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val storeRepository: StoreRepository,
+    private val storageRepository: com.invsmart.app.data.repository.StorageRepository
 ) : ViewModel() {
 
     private val _operationStatus = MutableStateFlow<Result<Unit>?>(null)
@@ -42,54 +51,80 @@ class ManagerViewModel @Inject constructor(
     private val _managerMessage = MutableStateFlow<String?>(null)
     val managerMessage: StateFlow<String?> = _managerMessage.asStateFlow()
 
-    @Inject
-    lateinit var storeRepository: StoreRepository
-
     fun resetMessage() {
         _managerMessage.value = null
     }
 
-    fun loadDashboard(actor: User) {
+    private val _currentChainId = MutableStateFlow("")
+    private val _currentStoreId = MutableStateFlow("")
+
+    init {
+        // Realtime Stores for Master
         viewModelScope.launch {
-            val chainId = actor.chainId
-            val storeId = if (actor.roleGlobal != "master") actor.storeId else ""
+            _currentChainId.collect { chainId ->
+                if (chainId.isNotEmpty()) {
+                    storeRepository.getStoresRealtime(chainId).collect { result ->
+                        result.onSuccess { 
+                            _stores.value = it 
+                            loadRevenuePerStore(it)
+                        }
+                    }
+                }
+            }
+        }
 
-            // Total Revenue
-            orderRepository.getTotalRevenue(chainId = if (actor.roleGlobal == "master") chainId else "", storeId = storeId)
-                .onSuccess { _revenue.value = it }
-                .onFailure { _managerMessage.value = it.localizedMessage ?: "Không tải được doanh thu" }
+        // Realtime Catalog Products for Master
+        viewModelScope.launch {
+            _currentChainId
+                .flatMapLatest { chainId ->
+                    if (chainId.isNotEmpty()) {
+                        productRepository.getProductsRealtime(chainId = chainId, storeId = "", onlyCatalog = true)
+                    } else {
+                        flowOf(Result.success(emptyList()))
+                    }
+                }
+                .collect { result ->
+                    result.onSuccess { _catalogProducts.value = it }
+                }
+        }
+    }
 
-            // Users
+    fun loadDashboard(actor: User) {
+        _currentChainId.value = actor.chainId
+        _currentStoreId.value = if (actor.roleGlobal != "master") actor.storeId else ""
+
+        viewModelScope.launch {
+            // 1. One-time fetch for Manageable Users
             userRepository.getManageableUsers(actor)
                 .onSuccess { _managedUsers.value = it }
                 .onFailure { _managerMessage.value = it.localizedMessage ?: "Không tải được danh sách người dùng" }
 
-            if (actor.roleGlobal == "master") {
-                // Stores
-                storeRepository.getStoresByChain(chainId)
-                    .onSuccess { 
-                        _stores.value = it 
-                        // Load revenue for each store
-                        loadRevenuePerStore(it)
-                    }
-                
-                // Catalog Products
-                productRepository.getProductsRealtime(chainId = chainId, storeId = "")
-                    .collect { result ->
-                        result.onSuccess { _catalogProducts.value = it }
-                    }
-            }
+            // 2. Refresh Revenue
+            refreshRevenue(actor)
+        }
+    }
+
+    private fun refreshRevenue(actor: User) {
+        viewModelScope.launch {
+            val chainId = actor.chainId
+            val storeId = if (actor.roleGlobal != "master") actor.storeId else ""
+            orderRepository.getTotalRevenue(chainId = if (actor.roleGlobal == "master") chainId else "", storeId = storeId)
+                .onSuccess { _revenue.value = it }
         }
     }
 
     private fun loadRevenuePerStore(stores: List<Store>) {
+        val chainId = _currentChainId.value
         viewModelScope.launch {
-            val revenueMap = mutableMapOf<String, Double>()
-            stores.forEach { store ->
-                orderRepository.getTotalRevenue(storeId = store.storeId)
-                    .onSuccess { revenueMap[store.storeId] = it }
+            coroutineScope {
+                val revenueDeferred = stores.map { store ->
+                    async {
+                        store.storeId to (orderRepository.getTotalRevenue(chainId = chainId, storeId = store.storeId).getOrDefault(0.0))
+                    }
+                }
+                val results = revenueDeferred.awaitAll()
+                _branchRevenueMap.value = results.toMap()
             }
-            _branchRevenueMap.value = revenueMap
         }
     }
 
@@ -143,17 +178,28 @@ class ManagerViewModel @Inject constructor(
         _operationStatus.value = null
     }
 
-    fun addCatalogProduct(product: Product, actor: User) {
+    fun addCatalogProduct(product: Product, actor: User, imageUri: android.net.Uri? = null) {
         if (actor.roleGlobal != "master") {
             _managerMessage.value = "Chỉ Master mới có quyền tạo sản phẩm danh mục"
             return
         }
         viewModelScope.launch {
+            var finalImageUrl = product.imageUrl
+            if (imageUri != null) {
+                storageRepository.uploadImage(imageUri, "catalog")
+                    .onSuccess { finalImageUrl = it }
+                    .onFailure { 
+                        _managerMessage.value = "Lỗi tải ảnh: ${it.localizedMessage}"
+                        return@launch
+                    }
+            }
+
             val now = com.google.firebase.Timestamp.now()
             val payload = product.copy(
                 productId = product.productId.ifEmpty { product.sku },
                 chainId = actor.chainId,
                 storeId = "", // Catalog product
+                imageUrl = finalImageUrl,
                 createdBy = actor.uid,
                 createdAt = now,
                 updatedAt = now
@@ -189,6 +235,25 @@ class ManagerViewModel @Inject constructor(
     fun deleteProduct(productId: String) {
         viewModelScope.launch {
             _operationStatus.value = productRepository.deleteProduct(productId)
+        }
+    }
+
+    fun importFromCatalog(catalogProduct: Product, quantity: Int, actor: User) {
+        viewModelScope.launch {
+            val now = com.google.firebase.Timestamp.now()
+            val branchProduct = catalogProduct.copy(
+                productId = "${actor.storeId}_${catalogProduct.sku}",
+                storeId = actor.storeId,
+                chainId = actor.chainId,
+                stockQuantity = quantity,
+                createdBy = actor.uid,
+                createdAt = now,
+                updatedAt = now
+            )
+            _operationStatus.value = productRepository.addProduct(branchProduct)
+            if (_operationStatus.value?.isSuccess == true) {
+                _managerMessage.value = "Đã nhập ${catalogProduct.name} vào kho"
+            }
         }
     }
 }

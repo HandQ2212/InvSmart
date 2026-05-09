@@ -78,6 +78,7 @@ class MainViewModel @Inject constructor(
                             isLoadingProducts = false
                         )
                     }
+                    startProductListener(user.copy(roleGlobal = normalizedRole))
                     android.util.Log.d("AUTH", "LOGIN SUCCESS: Role is $normalizedRole")
                 }.onFailure { e ->
                     _uiState.update {
@@ -96,6 +97,27 @@ class MainViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    private var productJob: kotlinx.coroutines.Job? = null
+
+    private fun startProductListener(user: User) {
+        productJob?.cancel()
+        
+        val chainId = user.chainId
+        val storeId = if (user.roleGlobal == "master") "" else user.storeId
+        
+        productJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingProducts = true) }
+            productRepository.getProductsRealtime(chainId = chainId, storeId = storeId)
+                .collect { result ->
+                    result.onSuccess { products ->
+                        _uiState.update { it.copy(products = products, isLoadingProducts = false) }
+                    }.onFailure { e ->
+                        _uiState.update { it.copy(isLoadingProducts = false) }
+                    }
+                }
         }
     }
 
@@ -158,6 +180,7 @@ class MainViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
+            productJob?.cancel()
             authRepository.logout()
             sessionManager.clear()
             _uiState.update {
@@ -233,7 +256,11 @@ class MainViewModel @Inject constructor(
 
                 val orders = db.collection("orders").get().await()
                 orders.forEach { doc ->
-                    doc.reference.update(mapOf("chainId" to defaultChainId, "storeId" to defaultStoreId)).await()
+                    doc.reference.update(mapOf(
+                        "chainId" to defaultChainId, 
+                        "storeId" to defaultStoreId,
+                        "status" to "paid"
+                    )).await()
                 }
 
                 android.util.Log.d("MIGRATION", "DATABASE INITIALIZED SUCCESSFULLY!")

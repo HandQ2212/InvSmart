@@ -1,10 +1,8 @@
 package com.invsmart.app.data.model
 
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentId
 
 data class User(
-    @DocumentId
     val uid: String = "",
     val username: String = "",
     val usernameLower: String = "",

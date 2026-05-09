@@ -13,6 +13,7 @@
     <color name="md_theme_light_onBackground">#111827</color>
     <color name="md_theme_light_surface">#FFFFFF</color>
     <color name="md_theme_light_onSurface">#0F172A</color>
+    <color name="md_theme_light_onSurfaceVariant">#404851</color>
     <color name="md_theme_light_surfaceVariant">#E3EDF7</color>
     <color name="md_theme_light_outline">#A8B4C3</color>
     <color name="md_theme_light_error">#D12F2F</color>
@@ -25,4 +26,5 @@
     <color name="brand_success">#1E9E5A</color>
     <color name="brand_warning">#D97706</color>
     <color name="brand_danger">#DC2626</color>
+    <color name="brand_border">#E2E8F0</color>
 </resources>

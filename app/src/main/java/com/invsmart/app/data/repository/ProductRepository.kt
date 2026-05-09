@@ -16,15 +16,20 @@ import javax.inject.Singleton
 class ProductRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
-    fun getProductsRealtime(chainId: String = "", storeId: String = ""): Flow<Result<List<Product>>> = callbackFlow {
+    fun getProductsRealtime(chainId: String = "", storeId: String = "", onlyCatalog: Boolean = false): Flow<Result<List<Product>>> = callbackFlow {
         val baseQuery = firestore.collection("products")
-        val query = if (storeId.isNotEmpty()) {
+        var query = if (storeId.isNotEmpty()) {
             baseQuery.whereEqualTo("storeId", storeId)
         } else if (chainId.isNotEmpty()) {
             baseQuery.whereEqualTo("chainId", chainId)
         } else {
             baseQuery
         }
+
+        if (onlyCatalog) {
+            query = query.whereEqualTo("storeId", "")
+        }
+
         val registration = query.addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(Result.failure(error))

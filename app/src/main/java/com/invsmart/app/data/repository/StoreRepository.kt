@@ -5,6 +5,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.invsmart.app.data.model.Store
 import com.invsmart.app.data.model.User
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -21,13 +25,31 @@ class StoreRepository @Inject constructor(
         }
     }
 
+    fun getStoresRealtime(chainId: String): Flow<Result<List<Store>>> = callbackFlow {
+        val registration = firestore.collection("stores")
+            .whereEqualTo("chainId", chainId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                val stores = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Store::class.java)?.copy(storeId = doc.id)
+                }.orEmpty()
+                trySend(Result.success(stores))
+            }
+        awaitClose { registration.remove() }
+    }.flowOn(Dispatchers.IO)
+
     suspend fun getStoresByChain(chainId: String): Result<List<Store>> = withContext(Dispatchers.IO) {
         runCatching {
             val snapshot = firestore.collection("stores")
                 .whereEqualTo("chainId", chainId)
                 .get()
                 .await()
-            snapshot.documents.mapNotNull { it.toObject(Store::class.java) }
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Store::class.java)?.copy(storeId = doc.id)
+            }
         }
     }
 

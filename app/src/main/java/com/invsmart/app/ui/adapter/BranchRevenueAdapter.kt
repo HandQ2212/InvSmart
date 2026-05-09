@@ -1,4 +1,4 @@
-package com.invsmart.app.ui.view
+package com.invsmart.app.ui.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

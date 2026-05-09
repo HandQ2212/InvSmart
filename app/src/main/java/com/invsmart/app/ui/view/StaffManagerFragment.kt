@@ -75,7 +75,16 @@ class StaffManagerFragment : Fragment() {
                 launch {
                     managerViewModel.managedUsers.collect { users ->
                         binding.progressBar.visibility = View.GONE
-                        userAdapter.submitList(users)
+                        
+                        // Resolve Store Names
+                        val storeMap = managerViewModel.stores.value.associate { it.storeId to it.name }
+                        userAdapter.setStoreMap(storeMap)
+                        
+                        // Filter: Remove Staff as requested
+                        val filteredUsers = users.filter { it.roleGlobal != "staff" }
+                        userAdapter.submitList(filteredUsers)
+                        
+                        binding.tvEmptyState.visibility = if (filteredUsers.isEmpty()) View.VISIBLE else View.GONE
                     }
                 }
                 launch {
@@ -87,6 +96,12 @@ class StaffManagerFragment : Fragment() {
                             actorUser = latestActor
                             managerViewModel.loadDashboard(latestActor)
                         }
+                    }
+                }
+                launch {
+                    managerViewModel.stores.collect { stores ->
+                        val storeMap = stores.associate { it.storeId to it.name }
+                        userAdapter.setStoreMap(storeMap)
                     }
                 }
                 launch {

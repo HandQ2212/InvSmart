@@ -24,7 +24,21 @@
                 app:title="Quản lý kho hàng"
                 app:titleTextColor="@android:color/white"
                 app:navigationIcon="?attr/homeAsUpIndicator"
-                android:background="?attr/colorPrimary" />
+                android:background="?attr/colorPrimary">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnImportCatalog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginEnd="16dp"
+                    android:text="Nhập kho"
+                    android:textColor="@android:color/white"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    app:icon="@android:drawable/ic_menu_add"
+                    app:iconTint="@android:color/white" />
+
+            </androidx.appcompat.widget.Toolbar>
         </com.google.android.material.appbar.AppBarLayout>
 
         <TextView

@@ -100,7 +100,10 @@ class UserRepository @Inject constructor(
             val baseQuery = firestore.collection("users")
             val query = when (actor.roleGlobal) {
                 "admin" -> baseQuery // Admin sees everyone (but logic below filters)
-                "master" -> baseQuery.whereEqualTo("chainId", actor.chainId)
+                "master" -> {
+                    if (actor.chainId.isEmpty()) baseQuery.whereEqualTo("uid", "none")
+                    else baseQuery.whereEqualTo("chainId", actor.chainId)
+                }
                 "manager" -> baseQuery.whereEqualTo("storeId", actor.storeId)
                 else -> baseQuery.whereEqualTo("uid", "none")
             }
@@ -113,8 +116,8 @@ class UserRepository @Inject constructor(
                 .filter { it.uid != actor.uid }
                 .filter { target ->
                     when (actorRole) {
-                        "admin" -> target.roleGlobal == "master"
-                        "master" -> target.roleGlobal == "manager" || target.roleGlobal == "staff"
+                "admin" -> target.roleGlobal == "master" || target.roleGlobal == "unassigned"
+                        "master" -> target.roleGlobal == "manager" || target.roleGlobal == "staff" || target.roleGlobal == "unassigned"
                         "manager" -> target.roleGlobal == "staff"
                         else -> false
                     }

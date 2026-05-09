@@ -15,41 +15,44 @@
         <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
             app:elevation="0dp">
 
-            <androidx.appcompat.widget.Toolbar
+            <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:title="Quản lý người dùng"
-                app:titleTextColor="@android:color/white"
-                app:navigationIcon="?attr/homeAsUpIndicator"
-                android:background="?attr/colorPrimary" />
+                app:title="Quản lý nhân viên"
+                app:titleCentered="true"
+                app:navigationIcon="@drawable/ic_back"
+                app:navigationIconTint="@color/md_theme_light_onSurface"
+                app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge" />
         </com.google.android.material.appbar.AppBarLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"
-            android:text="Master quản lý Manager + Staff, Manager chỉ quản lý Staff"
-            android:textColor="@color/brand_text_muted"
-            android:textSize="14sp" />
 
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:layout_marginTop="32dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="100dp"
+            android:gravity="center"
+            android:text="Không có quản lý nào"
+            android:textColor="@color/brand_text_muted"
             android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvStaff"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="match_parent"
             android:clipToPadding="false"
+            android:paddingTop="8dp"
             android:paddingBottom="16dp" />
 
     </LinearLayout>

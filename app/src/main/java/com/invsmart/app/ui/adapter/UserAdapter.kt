@@ -12,6 +12,13 @@ class UserAdapter(
     private val onUserClick: (User) -> Unit
 ) : ListAdapter<User, UserAdapter.UserViewHolder>(UserDiffCallback()) {
 
+    private var storeMap: Map<String, String> = emptyMap()
+
+    fun setStoreMap(map: Map<String, String>) {
+        storeMap = map
+        notifyDataSetChanged()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
         val binding = ItemUserBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return UserViewHolder(binding)
@@ -33,7 +40,9 @@ class UserAdapter(
                 "unassigned" -> "Chưa gán"
                 else -> "Nhân viên"
             }
-            binding.tvRole.text = "Quyền: $roleDisplay"
+            binding.chipRole.text = roleDisplay
+            val storeName = if (user.storeId.isEmpty()) "Tổng chuỗi" else storeMap[user.storeId] ?: "Chi nhánh: ${user.storeId}"
+            binding.tvStoreInfo.text = storeName
             
             binding.root.setOnClickListener { onUserClick(user) }
         }

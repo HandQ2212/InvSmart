@@ -102,14 +102,18 @@ class OrderRepository @Inject constructor(
 
     suspend fun getTotalRevenue(chainId: String = "", storeId: String = ""): Result<Double> = withContext(Dispatchers.IO) {
         runCatching {
-            val baseQuery = firestore.collection("orders")
-            val query = if (storeId.isNotEmpty()) {
-                baseQuery.whereEqualTo("storeId", storeId)
-            } else if (chainId.isNotEmpty()) {
-                baseQuery.whereEqualTo("chainId", chainId)
-            } else {
-                baseQuery
+            if (storeId.isEmpty() && chainId.isEmpty()) {
+                return@runCatching 0.0
             }
+
+            var query: com.google.firebase.firestore.Query = firestore.collection("orders")
+            if (chainId.isNotEmpty()) {
+                query = query.whereEqualTo("chainId", chainId)
+            }
+            if (storeId.isNotEmpty()) {
+                query = query.whereEqualTo("storeId", storeId)
+            }
+            
             val snapshot = query.whereEqualTo("status", "paid")
                 .get()
                 .await()
