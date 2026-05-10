@@ -2,209 +2,143 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
-    function userDoc(uid) {
-      return get(/databases/$(database)/documents/users/$(uid));
-    }
-
-    function userRole(uid) {
+    // --- FUNCTIONS HỖ TRỢ ---
+    function signedIn() { return request.auth != null; }
+    function userDoc(uid) { return get(/databases/$(database)/documents/users/$(uid)); }
+    
+    function isAdmin(uid) { 
       let data = userDoc(uid).data;
-      return data.roleGlobal == 'admin' ? 'admin' :
-             (data.roleGlobal == 'master' ? 'master' :
-             (data.roleGlobal == 'manager' ? 'manager' :
-             (data.roleGlobal == 'staff' ? 'staff' : 'unassigned')));
+      return signedIn() && (data.get('roleGlobal', '') == 'admin' || data.get('role', '') == 'admin');
+    }
+    
+    function isMaster(uid) { 
+      let data = userDoc(uid).data;
+      return signedIn() && (
+        data.get('roleGlobal', '') == 'master' || 
+        data.get('role', '') == 'master' ||
+        data.get('isMaster', false) == true
+      );
     }
 
-    function isMaster(uid) {
-      return signedIn() && userRole(uid) == 'master';
+    function isManager(uid) { 
+      let data = userDoc(uid).data;
+      return signedIn() && (
+        data.get('roleGlobal', '') == 'manager' || 
+        data.get('role', '') == 'manager'
+      );
     }
 
-    function isManager(uid) {
-      let role = userRole(uid);
-      return signedIn() && (role == 'master' || role == 'manager');
+    function isStaff(uid) {
+      let data = userDoc(uid).data;
+      let role = data.get('roleGlobal', '');
+      return signedIn() && (role == 'staff' || role == ''); 
     }
+    
+    function userChain(uid) { return userDoc(uid).data.get('chainId', ''); }
+    function userStore(uid) { return userDoc(uid).data.get('storeId', ''); }
 
-    function userStore(uid) {
-      return userDoc(uid).data.storeId;
-    }
-
-    function isSameStore(uid) {
-      return signedIn() && resource.data.storeId == userStore(uid);
-    }
-
-    function isIncomingSameStore(uid) {
-      return signedIn() && request.resource.data.storeId == userStore(uid);
-    }
-
-    function userChain(uid) {
-      return userDoc(uid).data.chainId;
-    }
-
-    function isAdmin(uid) {
-      return signedIn() && userDoc(uid).data.roleGlobal == 'admin';
-    }
-
-    function isMasterOfChain(uid, chainId) {
-      return isMaster(uid) && userChain(uid) == chainId;
-    }
-
-    function isManagerOfStore(uid, storeId) {
-      return isManager(uid) && userStore(uid) == storeId;
-    }
-
-    function isSameChain(uid) {
-      return signedIn() && resource.data.chainId == userChain(uid);
-    }
-
-    function isIncomingSameChain(uid) {
-      return signedIn() && request.resource.data.chainId == userChain(uid);
-    }
-
-    function existingUserRole() {
-      return resource.data.isMaster == true || resource.data.roleGlobal == 'master'
-        ? 'master'
-        : (
-          resource.data.roleGlobal == 'manager' || resource.data.role == 'manager'
-            ? 'manager'
-            : 'staff'
-        );
-    }
-
-    function incomingUserRole() {
-      return request.resource.data.isMaster == true || request.resource.data.roleGlobal == 'master'
-        ? 'master'
-        : (
-          request.resource.data.roleGlobal == 'manager' || request.resource.data.role == 'manager'
-            ? 'manager'
-            : 'staff'
-        );
-    }
-
-    function roleFieldsUnchanged() {
-      return request.resource.data.roleGlobal == resource.data.roleGlobal
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.isMaster == resource.data.isMaster;
-    }
-
-    function stockQtyOnlyUpdate() {
-      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['stockQty'])
-        && (request.resource.data.stockQty is number || request.resource.data.stockQty is int);
-    }
-
+    // --- QUY TẮC CHO USERS ---
     match /users/{uid} {
       allow read: if signedIn() && (
-        isSelf(uid) 
-        || isAdmin(request.auth.uid)
-        || (isMaster(request.auth.uid) && resource.data.chainId == userChain(request.auth.uid))
-        || (isManager(request.auth.uid) && resource.data.storeId == userStore(request.auth.uid))
+        request.auth.uid == uid 
+        || isAdmin(request.auth.uid) 
+        || (isMaster(request.auth.uid) && (
+             resource.data.get('chainId', '') == userChain(request.auth.uid) ||
+             resource.data.get('chainId', '') == ''
+           ))
+        || (isManager(request.auth.uid) && (
+             resource.data.get('storeId', '') == userStore(request.auth.uid) ||
+             resource.data.get('chainId', '') == ''
+           ))
       );
-
-      allow create: if isSelf(uid) || isAdmin(request.auth.uid);
-
-      allow update: if isSelf(uid)
-        || isAdmin(request.auth.uid)
-        || (
-          isMaster(request.auth.uid)
-          && resource.data.chainId == userChain(request.auth.uid)
-          && existingUserRole() != 'master'
-          && (incomingUserRole() == 'manager' || incomingUserRole() == 'staff')
-        )
-        || (
-          isManager(request.auth.uid)
-          && resource.data.storeId == userStore(request.auth.uid)
-          && existingUserRole() == 'staff'
-          && roleFieldsUnchanged()
-        );
-
-      allow delete: if isAdmin(request.auth.uid)
-        || (isMaster(request.auth.uid) && resource.data.chainId == userChain(request.auth.uid) && existingUserRole() != 'master')
-        || (isManager(request.auth.uid) && resource.data.storeId == userStore(request.auth.uid) && existingUserRole() == 'staff');
+      allow create: if signedIn(); 
+      allow update: if signedIn() && (
+        request.auth.uid == uid 
+        || isAdmin(request.auth.uid) 
+        || (isMaster(request.auth.uid) && (
+             resource.data.get('chainId', '') == userChain(request.auth.uid) ||
+             resource.data.get('chainId', '') == ''
+           ))
+        || (isManager(request.auth.uid) && resource.data.get('storeId', '') == userStore(request.auth.uid))
+      );
     }
 
+    // --- QUY TẮC CHO INVITATIONS ---
+    match /invitations/{inviteId} {
+      allow read: if signedIn() && (
+        request.auth.uid == resource.data.receiverUid 
+        || request.auth.uid == resource.data.senderUid
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if isMaster(request.auth.uid) || isAdmin(request.auth.uid) || isManager(request.auth.uid);
+      allow update: if signedIn() && (request.auth.uid == resource.data.receiverUid);
+      allow delete: if signedIn() && (request.auth.uid == resource.data.senderUid || isAdmin(request.auth.uid));
+    }
+
+    // --- QUY TẮC CHO PRODUCTS ---
     match /products/{productId} {
-      allow read: if signedIn() && (isSameChain(request.auth.uid) || isSameStore(request.auth.uid));
-      
-      allow create: if isMaster(request.auth.uid) && isIncomingSameChain(request.auth.uid);
-      
-      allow update: if (isMaster(request.auth.uid) && isSameChain(request.auth.uid) && isIncomingSameChain(request.auth.uid))
-        || (isManager(request.auth.uid) && isSameStore(request.auth.uid) && stockQtyOnlyUpdate());
-      
-      allow delete: if isMaster(request.auth.uid) && isSameChain(request.auth.uid);
-    }
-
-    match /orders/{orderId} {
-      allow read: if signedIn() && (isSameChain(request.auth.uid) || isSameStore(request.auth.uid));
-      allow create: if signedIn() && isIncomingSameStore(request.auth.uid);
-      allow update: if signedIn() && isSameStore(request.auth.uid) && (
-        resource.data.staffUid == request.auth.uid
-        || isManager(request.auth.uid)
-        || isMaster(request.auth.uid)
+      // Cho phép đọc nếu là Admin, hoặc thuộc cùng Chain, hoặc thuộc cùng Store
+      allow read: if signedIn() && (
+        isAdmin(request.auth.uid)
+        || resource.data.get('chainId', '') == userChain(request.auth.uid)
+        || resource.data.get('storeId', '') == userStore(request.auth.uid)
+        || resource.data.get('chainId', '') == "" // Toàn hệ thống (nếu có)
       );
-      allow delete: if isMaster(request.auth.uid) && isSameChain(request.auth.uid);
+      
+      allow write: if isAdmin(request.auth.uid) || (
+        isMaster(request.auth.uid) && (
+          (request.resource != null && request.resource.data.get('chainId', '') == userChain(request.auth.uid)) ||
+          (resource != null && resource.data.get('chainId', '') == userChain(request.auth.uid))
+        )
+      ) || (
+        isManager(request.auth.uid) && (
+          (request.resource != null && request.resource.data.get('storeId', '') == userStore(request.auth.uid)) ||
+          (resource != null && resource.data.get('storeId', '') == userStore(request.auth.uid))
+        )
+      ) || (
+        isStaff(request.auth.uid) && (
+          (request.resource != null && request.resource.data.get('storeId', '') == userStore(request.auth.uid)) ||
+          (resource != null && resource.data.get('storeId', '') == userStore(request.auth.uid))
+        )
+      );
     }
 
+    // --- QUY TẮC CHO ORDERS ---
+    match /orders/{orderId} {
+      allow read: if signedIn() && (
+        isAdmin(request.auth.uid) 
+        || resource.data.get('chainId', '') == userChain(request.auth.uid)
+        || resource.data.get('storeId', '') == userStore(request.auth.uid)
+      );
+      allow write: if signedIn() && (
+        isAdmin(request.auth.uid) || 
+        request.resource.data.get('chainId', '') == userChain(request.auth.uid) ||
+        resource.data.get('chainId', '') == userChain(request.auth.uid) ||
+        request.resource.data.get('storeId', '') == userStore(request.auth.uid) ||
+        resource.data.get('storeId', '') == userStore(request.auth.uid)
+      );
+    }
+
+    // --- CÁC COLLECTION KHÁC ---
     match /chains/{chainId} {
-      allow read: if signedIn() && (isAdmin(request.auth.uid) || userChain(request.auth.uid) == chainId);
+      allow read: if signedIn();
       allow write: if isAdmin(request.auth.uid);
     }
 
     match /stores/{storeId} {
-      allow read: if signedIn() && (isAdmin(request.auth.uid) || isSameChain(request.auth.uid) || userStore(request.auth.uid) == storeId);
-      allow create, delete: if isAdmin(request.auth.uid) || (isMaster(request.auth.uid) && isIncomingSameChain(request.auth.uid));
-      allow update: if isAdmin(request.auth.uid) || (isMaster(request.auth.uid) && isSameChain(request.auth.uid));
-    }
-
-    match /invitations/{invId} {
-      allow read: if signedIn() && (
-        resource.data.receiverUid == request.auth.uid 
-        || resource.data.senderUid == request.auth.uid
-        || isAdmin(request.auth.uid)
+      allow read: if signedIn();
+      allow write: if isAdmin(request.auth.uid) || (
+        isMaster(request.auth.uid) && (
+          // Create/Update: check new data chainId
+          (request.resource != null && request.resource.data.get('chainId', '') == userChain(request.auth.uid)) ||
+          // Delete/Update: check existing data chainId
+          (resource != null && resource.data.get('chainId', '') == userChain(request.auth.uid))
+        )
       );
-      allow create: if signedIn() && (isAdmin(request.auth.uid) || isMaster(request.auth.uid) || isManager(request.auth.uid));
-      allow update: if signedIn() && (
-        (resource.data.receiverUid == request.auth.uid && request.resource.data.status in ['accepted', 'rejected'])
-        || (resource.data.senderUid == request.auth.uid && request.resource.data.status == 'cancelled')
-        || isAdmin(request.auth.uid)
-      );
-    }
-
-    match /payments/{paymentId} {
-      allow read, create, update: if signedIn() && isSameStore(request.auth.uid);
-      allow delete: if isManager(request.auth.uid) && isSameStore(request.auth.uid);
-    }
-
-    match /stores/{storeId} {
-      allow read: if signedIn() && (userStore(request.auth.uid) == storeId);
-      allow write: if false; // Only App Admin (manual) for now
-    }
-
-    match /inventory_logs/{logId} {
-      allow read: if signedIn() && isSameStore(request.auth.uid);
-      allow create: if signedIn() && isIncomingSameStore(request.auth.uid);
-    }
-
-    match /categories/{categoryId} {
-      allow read: if signedIn() && isSameStore(request.auth.uid);
-      allow create, update, delete: if isManager(request.auth.uid) && isIncomingSameStore(request.auth.uid);
-    }
-
-    match /team_members/{membershipId} {
-      allow read, write: if false;
-    }
-
-    match /team_invites/{inviteId} {
-      allow read, write: if false;
     }
 
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isAdmin(request.auth.uid);
     }
   }
 }

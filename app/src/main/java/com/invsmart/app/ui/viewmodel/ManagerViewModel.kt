@@ -27,7 +27,7 @@ class ManagerViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val userRepository: UserRepository,
     private val storeRepository: StoreRepository,
-    private val storageRepository: com.invsmart.app.data.repository.StorageRepository
+    private val cloudinaryRepository: com.invsmart.app.data.repository.CloudinaryRepository
 ) : ViewModel() {
 
     private val _operationStatus = MutableStateFlow<Result<Unit>?>(null)
@@ -61,22 +61,28 @@ class ManagerViewModel @Inject constructor(
     init {
         // Realtime Stores for Master
         viewModelScope.launch {
-            _currentChainId.collect { chainId ->
-                if (chainId.isNotEmpty()) {
-                    storeRepository.getStoresRealtime(chainId).collect { result ->
-                        result.onSuccess { 
-                            _stores.value = it 
-                            loadRevenuePerStore(it)
-                        }
+            _currentChainId
+                .flatMapLatest { chainId ->
+                    if (chainId.isNotEmpty()) {
+                        storeRepository.getStoresRealtime(chainId)
+                    } else {
+                        kotlinx.coroutines.flow.flowOf(Result.success(emptyList()))
                     }
                 }
-            }
+                .collect { result ->
+                    if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser == null) return@collect
+                    result.onSuccess { 
+                        _stores.value = it 
+                        loadRevenuePerStore(it)
+                    }
+                }
         }
 
-        // Realtime Catalog Products for Master
+        // Realtime Catalog Products for Master/Manager
         viewModelScope.launch {
             _currentChainId
                 .flatMapLatest { chainId ->
+                    android.util.Log.d("MANAGER_VM", "Fetching Catalog for ChainId: '$chainId'")
                     if (chainId.isNotEmpty()) {
                         productRepository.getProductsRealtime(chainId = chainId, storeId = "", onlyCatalog = true)
                     } else {
@@ -84,7 +90,15 @@ class ManagerViewModel @Inject constructor(
                     }
                 }
                 .collect { result ->
-                    result.onSuccess { _catalogProducts.value = it }
+                    if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser == null) return@collect
+                    result.onSuccess { 
+                        android.util.Log.d("MANAGER_VM", "Catalog Fetch SUCCESS: ${it.size} items")
+                        _catalogProducts.value = it 
+                    }
+                    result.onFailure { 
+                        android.util.Log.e("MANAGER_VM", "Catalog Fetch FAILED", it)
+                        _managerMessage.value = "Lỗi tải danh mục: ${it.localizedMessage}"
+                    }
                 }
         }
     }
@@ -98,6 +112,9 @@ class ManagerViewModel @Inject constructor(
             userRepository.getManageableUsers(actor)
                 .onSuccess { _managedUsers.value = it }
                 .onFailure { _managerMessage.value = it.localizedMessage ?: "Không tải được danh sách người dùng" }
+
+            // 2. Refresh Revenue
+            refreshRevenue(actor)
 
             // 2. Refresh Revenue
             refreshRevenue(actor)
@@ -129,6 +146,14 @@ class ManagerViewModel @Inject constructor(
     }
 
     fun createBranch(name: String, address: String, actor: User, manager: User? = null) {
+        android.util.Log.d("MANAGER_VM", "createBranch: $name, manager: ${manager?.uid}")
+        
+        if (actor.chainId.isBlank()) {
+            _managerMessage.value = "Lỗi: Tài khoản Master chưa được gán mã chuỗi (chainId)"
+            android.util.Log.e("MANAGER_VM", "createBranch aborted: Actor chainId is blank")
+            return
+        }
+
         viewModelScope.launch {
             val newStore = Store(
                 name = name,
@@ -140,10 +165,12 @@ class ManagerViewModel @Inject constructor(
             )
             storeRepository.createStore(newStore, manager)
                 .onSuccess {
+                    android.util.Log.d("MANAGER_VM", "createBranch SUCCESS: $name")
                     _managerMessage.value = "Đã tạo chi nhánh $name"
                     loadDashboard(actor)
                 }
                 .onFailure {
+                    android.util.Log.e("MANAGER_VM", "createBranch FAILED: ${it.message}")
                     _managerMessage.value = it.localizedMessage ?: "Lỗi tạo chi nhánh"
                 }
         }
@@ -179,24 +206,30 @@ class ManagerViewModel @Inject constructor(
     }
 
     fun addCatalogProduct(product: Product, actor: User, imageUri: android.net.Uri? = null) {
-        if (actor.roleGlobal != "master") {
+        if (actor.roleGlobal.lowercase() != "master") {
             _managerMessage.value = "Chỉ Master mới có quyền tạo sản phẩm danh mục"
+            return
+        }
+        if (actor.chainId.isBlank()) {
+            _managerMessage.value = "Lỗi: Tài khoản Master chưa được gán mã chuỗi (chainId)"
             return
         }
         viewModelScope.launch {
             var finalImageUrl = product.imageUrl
             if (imageUri != null) {
-                storageRepository.uploadImage(imageUri, "catalog")
+                cloudinaryRepository.uploadImage(imageUri)
                     .onSuccess { finalImageUrl = it }
                     .onFailure { 
-                        _managerMessage.value = "Lỗi tải ảnh: ${it.localizedMessage}"
+                        _managerMessage.value = "Lỗi tải ảnh lên Cloudinary: ${it.localizedMessage}"
                         return@launch
                     }
             }
 
             val now = com.google.firebase.Timestamp.now()
+            val finalProductId = if (product.productId.isNotEmpty()) product.productId else "catalog_${actor.chainId}_${product.sku}"
+            
             val payload = product.copy(
-                productId = product.productId.ifEmpty { product.sku },
+                productId = finalProductId,
                 chainId = actor.chainId,
                 storeId = "", // Catalog product
                 imageUrl = finalImageUrl,
@@ -204,7 +237,49 @@ class ManagerViewModel @Inject constructor(
                 createdAt = now,
                 updatedAt = now
             )
-            _operationStatus.value = productRepository.addProduct(payload)
+            val result = productRepository.addProduct(payload)
+            _operationStatus.value = result
+
+            if (result.isSuccess) {
+                _managerMessage.value = "Đã thêm sản phẩm vào danh mục"
+            } else {
+                val error = result.exceptionOrNull()?.localizedMessage ?: "Lỗi không xác định"
+                _managerMessage.value = "Lỗi thêm sản phẩm: $error"
+            }
+        }
+    }
+
+    fun updateCatalogProduct(product: Product, actor: User, imageUri: android.net.Uri? = null) {
+        if (actor.roleGlobal.lowercase() != "master") {
+            _managerMessage.value = "Chỉ Master mới có quyền chỉnh sửa sản phẩm danh mục"
+            return
+        }
+        viewModelScope.launch {
+            var finalImageUrl = product.imageUrl
+            if (imageUri != null) {
+                cloudinaryRepository.uploadImage(imageUri)
+                    .onSuccess { finalImageUrl = it }
+                    .onFailure { 
+                        _managerMessage.value = "Lỗi cập nhật ảnh lên Cloudinary: ${it.localizedMessage}"
+                        return@launch
+                    }
+            }
+
+            val payload = product.copy(
+                chainId = actor.chainId,
+                storeId = "",
+                imageUrl = finalImageUrl,
+                updatedAt = com.google.firebase.Timestamp.now()
+            )
+            val result = productRepository.updateProduct(payload)
+            _operationStatus.value = result
+            
+            if (result.isSuccess) {
+                _managerMessage.value = "Đã cập nhật sản phẩm danh mục"
+            } else {
+                val error = result.exceptionOrNull()?.localizedMessage ?: "Lỗi không xác định"
+                _managerMessage.value = "Lỗi cập nhật: $error"
+            }
         }
     }
 
@@ -241,18 +316,38 @@ class ManagerViewModel @Inject constructor(
     fun importFromCatalog(catalogProduct: Product, quantity: Int, actor: User) {
         viewModelScope.launch {
             val now = com.google.firebase.Timestamp.now()
-            val branchProduct = catalogProduct.copy(
-                productId = "${actor.storeId}_${catalogProduct.sku}",
-                storeId = actor.storeId,
-                chainId = actor.chainId,
-                stockQuantity = quantity,
-                createdBy = actor.uid,
-                createdAt = now,
-                updatedAt = now
-            )
-            _operationStatus.value = productRepository.addProduct(branchProduct)
-            if (_operationStatus.value?.isSuccess == true) {
-                _managerMessage.value = "Đã nhập ${catalogProduct.name} vào kho"
+            val branchProductId = "${actor.storeId}_${catalogProduct.sku}"
+            
+            // 1. Check if product already exists in this branch
+            val existingResult = productRepository.getProduct(branchProductId)
+            val existingProduct = existingResult.getOrNull()
+
+            val finalProduct = if (existingProduct != null) {
+                // Update existing stock
+                existingProduct.copy(
+                    stockQuantity = existingProduct.stockQuantity + quantity,
+                    updatedAt = now
+                )
+            } else {
+                // Create new branch product based on catalog
+                catalogProduct.copy(
+                    productId = branchProductId,
+                    storeId = actor.storeId,
+                    chainId = actor.chainId,
+                    stockQuantity = quantity,
+                    createdBy = actor.uid,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            }
+            
+            val result = productRepository.addProduct(finalProduct)
+            _operationStatus.value = result
+            if (result.isSuccess) {
+                val action = if (existingProduct != null) "Cập nhật tồn kho cho" else "Đã nhập"
+                _managerMessage.value = "$action ${catalogProduct.name} vào kho"
+            } else {
+                _managerMessage.value = "Lỗi nhập kho: ${result.exceptionOrNull()?.localizedMessage}"
             }
         }
     }

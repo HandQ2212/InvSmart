@@ -36,6 +36,7 @@ android {
         buildConfigField("String", "URL", "\"$url\"")
         buildConfigField("String", "API_KEY", "\"$apiKey\"")
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
+        buildConfigField("String", "CLOUDINARY_API_KEY", "\"$apiKey\"")
         buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"$cloudinaryUploadPreset\"")
     }
 

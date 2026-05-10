@@ -76,6 +76,13 @@ class UnassignedFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
+                    mainViewModel.uiState.collect { state ->
+                        state.currentUser?.uid?.let { uid ->
+                            viewModel.loadInvitations(uid)
+                        }
+                    }
+                }
+                launch {
                     viewModel.invitations.collect { 
                         adapter.submitList(it)
                         binding.tvNoInvitations.visibility = if (it.isEmpty()) View.VISIBLE else View.GONE

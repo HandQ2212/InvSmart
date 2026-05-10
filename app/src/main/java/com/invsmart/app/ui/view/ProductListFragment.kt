@@ -43,6 +43,8 @@ class ProductListFragment : Fragment() {
         return binding.root
     }
 
+    private var selectionsMap: Map<Product, Int> = emptyMap()
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -57,11 +59,13 @@ class ProductListFragment : Fragment() {
         binding.rvProducts.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = productAdapter
+            // Disable animations to further stabilize focus if needed
+            itemAnimator = null
         }
 
         binding.edtSearch.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                filterProducts(s.toString())
+                refreshProducts()
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -81,30 +85,39 @@ class ProductListFragment : Fragment() {
                     mainViewModel.uiState.collect { state ->
                         binding.progressBar.visibility = if (state.isLoadingProducts) View.VISIBLE else View.GONE
                         allProducts = state.products
-                        filterProducts(binding.edtSearch.text.toString())
+                        refreshProducts()
                     }
                 }
                 launch {
                     staffViewModel.selectedProducts.collect { selections ->
+                        selectionsMap = selections
                         productAdapter.setSelections(selections)
                         val totalSelected = selections.values.sum()
                         binding.fabContinue.text = "Tiếp tục ($totalSelected)"
+                        refreshProducts()
                     }
                 }
             }
         }
     }
 
-    private fun filterProducts(query: String) {
-        if (query.isEmpty()) {
-            productAdapter.submitList(allProducts)
+    private fun refreshProducts() {
+        val query = binding.edtSearch.text.toString().lowercase()
+        val filtered = if (query.isEmpty()) {
+            allProducts
         } else {
-            val lowerCaseQuery = query.lowercase()
-            val filtered = allProducts.filter {
-                it.name.lowercase().contains(lowerCaseQuery) || it.sku.lowercase().contains(lowerCaseQuery)
+            allProducts.filter {
+                it.name.lowercase().contains(query) || it.sku.lowercase().contains(query)
             }
-            productAdapter.submitList(filtered)
         }
+        
+        val selectionList = filtered.map { product ->
+            com.invsmart.app.ui.ProductSelection(
+                product = product,
+                quantity = selectionsMap.entries.find { it.key.productId == product.productId }?.value ?: 0
+            )
+        }
+        productAdapter.submitList(selectionList)
     }
 
     override fun onDestroyView() {

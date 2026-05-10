@@ -71,17 +71,21 @@ class StoreRepository @Inject constructor(
                 updatedAt = Timestamp.now()
             )
             batch.set(storeRef, finalStore)
+            android.util.Log.d("STORE_REPO", "Batch: Setting store ${finalStore.name} with ID $storeId and ChainId ${finalStore.chainId}")
 
             if (manager != null) {
                 val userRef = firestore.collection("users").document(manager.uid)
+                android.util.Log.d("STORE_REPO", "Batch: Updating manager ${manager.email} to Store $storeId and Chain ${finalStore.chainId}")
                 batch.update(userRef, mapOf(
                     "storeId" to storeId,
+                    "chainId" to store.chainId,
                     "roleGlobal" to "manager",
                     "updatedAt" to Timestamp.now()
                 ))
             }
 
             batch.commit().await()
+            android.util.Log.d("STORE_REPO", "Batch commit SUCCESS for storeId: $storeId")
             storeId
         }
     }

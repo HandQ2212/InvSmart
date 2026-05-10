@@ -56,7 +56,6 @@ class OrderRepository @Inject constructor(
             val snapshot = firestore.collection("orders")
                 .whereEqualTo("storeId", storeId)
                 .whereEqualTo("staffUid", staffUid)
-                .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .get()
                 .await()
             snapshot.documents.mapNotNull { it.toObject(Order::class.java) }
@@ -73,10 +72,9 @@ class OrderRepository @Inject constructor(
             } else {
                 baseQuery
             }
-            val snapshot = query.orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .get()
-                .await()
+            val snapshot = query.get().await()
             snapshot.documents.mapNotNull { it.toObject(Order::class.java) }
+                .sortedByDescending { it.createdAt }
         }
     }
 

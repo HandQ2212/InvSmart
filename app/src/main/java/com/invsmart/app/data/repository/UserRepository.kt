@@ -99,11 +99,8 @@ class UserRepository @Inject constructor(
         runCatching {
             val baseQuery = firestore.collection("users")
             val query = when (actor.roleGlobal) {
-                "admin" -> baseQuery // Admin sees everyone (but logic below filters)
-                "master" -> {
-                    if (actor.chainId.isEmpty()) baseQuery.whereEqualTo("uid", "none")
-                    else baseQuery.whereEqualTo("chainId", actor.chainId)
-                }
+                "admin" -> baseQuery
+                "master" -> baseQuery.whereIn("chainId", listOf(actor.chainId, ""))
                 "manager" -> baseQuery.whereEqualTo("storeId", actor.storeId)
                 else -> baseQuery.whereEqualTo("uid", "none")
             }
@@ -111,13 +108,19 @@ class UserRepository @Inject constructor(
             
             val users = snapshot.documents.map { mapUser(it) }
             val actorRole = actor.roleGlobal
+            val actorChainId = actor.chainId
             
             users
                 .filter { it.uid != actor.uid }
                 .filter { target ->
                     when (actorRole) {
-                "admin" -> target.roleGlobal == "master" || target.roleGlobal == "unassigned"
-                        "master" -> target.roleGlobal == "manager" || target.roleGlobal == "staff" || target.roleGlobal == "unassigned"
+                        "admin" -> target.roleGlobal == "master" || target.roleGlobal == "unassigned"
+                        "master" -> {
+                            val isUnassigned = target.roleGlobal == "unassigned"
+                            val isOwnChain = target.chainId == actorChainId
+                            val isManageableRole = target.roleGlobal == "manager" || target.roleGlobal == "staff"
+                            isUnassigned || (isOwnChain && isManageableRole)
+                        }
                         "manager" -> target.roleGlobal == "staff"
                         else -> false
                     }
@@ -147,11 +150,12 @@ class UserRepository @Inject constructor(
     }
 
     fun getUnassignedUsers(): Flow<List<User>> = firestore.collection("users")
+        .whereEqualTo("roleGlobal", "unassigned")
+        .whereEqualTo("chainId", "")
         .snapshots()
         .map { snapshot ->
             snapshot.documents
                 .map { mapUser(it) }
-                .filter { it.roleGlobal != "admin" }
         }
 
     suspend fun updateProfile(uid: String, fullName: String, phoneNumber: String): Result<Unit> = withContext(Dispatchers.IO) {

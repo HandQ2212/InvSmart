@@ -13,6 +13,7 @@ class InvSmartApp : Application(){
 		if (!isCloudinaryInitialized()) {
 			val config = mapOf(
 				"cloud_name" to BuildConfig.CLOUDINARY_CLOUD_NAME,
+				"api_key" to BuildConfig.CLOUDINARY_API_KEY,
 				"secure" to true
 			)
 			MediaManager.init(this, config)

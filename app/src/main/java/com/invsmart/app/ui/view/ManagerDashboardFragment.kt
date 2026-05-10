@@ -37,10 +37,12 @@ class ManagerDashboardFragment : Fragment() {
             binding.toolbar.title = "Master Dashboard"
             binding.tvWelcome.text = "Xin chào, Master!"
             binding.layoutMasterActions.visibility = View.VISIBLE
+            binding.layoutManagerActions.visibility = View.GONE
         } else {
             binding.toolbar.title = "Manager Dashboard"
             binding.tvWelcome.text = "Xin chào, Quản lý!"
             binding.layoutMasterActions.visibility = View.GONE
+            binding.layoutManagerActions.visibility = View.VISIBLE
         }
     }
 
@@ -95,15 +97,15 @@ class ManagerDashboardFragment : Fragment() {
         binding.cardInventory.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_inventory)
         }
-
         binding.cardStaff.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_staffManager)
         }
-
+        binding.cardStaffMaster.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_staffManager)
+        }
         binding.cardBranch.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_branchManager)
         }
-
         binding.cardCatalog.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_catalogManager)
         }

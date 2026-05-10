@@ -14,6 +14,9 @@
     <!-- Manager Flow -->
     <include android:id="@+id/nav_manager" app:graph="@navigation/nav_manager" />
 
+    <!-- Master Flow -->
+    <include android:id="@+id/nav_master" app:graph="@navigation/nav_master" />
+
     <!-- Staff Flow -->
     <include android:id="@+id/nav_staff" app:graph="@navigation/nav_staff" />
 

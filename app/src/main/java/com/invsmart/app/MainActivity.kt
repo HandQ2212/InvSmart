@@ -1,6 +1,7 @@
 package com.invsmart.app
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -45,7 +46,7 @@ class MainActivity : AppCompatActivity() {
                             val role = state.currentUser?.roleGlobal ?: sessionManager.getRole()
                             val startDest = resolveStartDestination(state.currentUser)
                             
-                            android.util.Log.d("NAV", "Authenticated: role=$role, startDest=$startDest, currentParent=${navController.currentDestination?.parent?.id}")
+                            Log.d("NAV", "Authenticated: role=$role, startDest=$startDest, currentParent=${navController.currentDestination?.parent?.id}")
 
                             // Buộc phải setGraph nếu vùng hiện tại không khớp
                             if (navController.currentDestination?.parent?.id != startDest) {
@@ -82,11 +83,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun resolveStartDestination(user: User?): Int {
         val role = user?.roleGlobal?.lowercase() ?: sessionManager.getRole().lowercase()
-        android.util.Log.d("NAV", "Resolving destination for role: $role")
+        Log.d("NAV", "Resolving destination for role: $role")
         
         return when (role) {
             "admin" -> R.id.nav_admin
-            "master" -> R.id.nav_manager
+            "master" -> R.id.nav_master
             "manager" -> R.id.nav_manager
             "staff" -> R.id.nav_staff
             "unassigned" -> R.id.nav_unassigned

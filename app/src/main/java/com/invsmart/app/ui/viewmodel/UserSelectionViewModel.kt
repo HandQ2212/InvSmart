@@ -81,6 +81,7 @@ class UserSelectionViewModel @Inject constructor(
                     }
             }
 
+            android.util.Log.d("INVITE", "Preparing invitation: From=${sender.email}, To=${receiver.email}, Role=$role, Chain=$finalChainId")
             val invitation = Invitation(
                 senderUid = sender.uid,
                 senderName = sender.fullName.ifEmpty { sender.email },
@@ -91,7 +92,17 @@ class UserSelectionViewModel @Inject constructor(
                 storeName = storeName,
                 createdAt = Timestamp.now()
             )
-            _inviteStatus.value = invitationRepository.sendInvitation(invitation)
+            
+            android.util.Log.d("INVITE", "Calling Repository.sendInvitation...")
+            val result = invitationRepository.sendInvitation(invitation)
+            _inviteStatus.value = result
+            
+            if (result.isSuccess) {
+                android.util.Log.d("INVITE", "SUCCESS: Invitation sent to ${receiver.email}")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                android.util.Log.e("INVITE", "FAILED: Invitation to ${receiver.email} error: $error")
+            }
             _isLoading.value = false
         }
     }

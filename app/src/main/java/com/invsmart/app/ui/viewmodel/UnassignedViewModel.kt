@@ -1,5 +1,6 @@
 package com.invsmart.app.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.invsmart.app.data.model.Invitation
@@ -23,9 +24,16 @@ class UnassignedViewModel @Inject constructor(
     val operationResult: StateFlow<Result<Unit>?> = _operationResult.asStateFlow()
 
     fun loadInvitations(uid: String) {
+        Log.d("UNASSIGNED_VM", "loadInvitations for UID: $uid")
         viewModelScope.launch {
             invitationRepository.getInvitationsForUser(uid)
-                .onSuccess { _invitations.value = it }
+                .onSuccess { 
+                    Log.d("UNASSIGNED_VM", "Found ${it.size} invitations")
+                    _invitations.value = it 
+                }
+                .onFailure {
+                    Log.e("UNASSIGNED_VM", "loadInvitations FAILED: ${it.message}")
+                }
         }
     }
 

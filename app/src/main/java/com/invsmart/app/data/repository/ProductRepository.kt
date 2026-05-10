@@ -65,6 +65,13 @@ class ProductRepository @Inject constructor(
         }
     }
 
+    suspend fun getProduct(productId: String): Result<Product?> = withContext(Dispatchers.IO) {
+        runCatching {
+            val doc = firestore.collection("products").document(productId).get().await()
+            doc.toObject(Product::class.java)?.copy(productId = doc.id)
+        }
+    }
+
     suspend fun deleteProduct(productId: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             firestore.collection("products").document(productId).delete().await()

@@ -66,9 +66,11 @@ class StaffViewModel @Inject constructor(
             val totalAmount = selections.entries.sumOf { (product, qty) -> product.price * qty }
 
             val order = Order(
+                orderId = "",
+                chainId = currentUser.chainId,
+                storeId = currentUser.storeId,
                 staffUid = currentUser.uid,
                 staffName = currentUser.fullName,
-                storeId = currentUser.storeId,
                 orderType = orderType,
                 items = orderItems,
                 totalQuantity = totalQty,

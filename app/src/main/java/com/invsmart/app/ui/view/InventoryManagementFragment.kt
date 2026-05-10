@@ -120,29 +120,30 @@ class InventoryManagementFragment : Fragment() {
     }
 
     private fun showCatalogImportDialog() {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.fragment_catalog_management, null)
-        // Cleanup the dialog view (it's a full fragment layout)
-        dialogView.findViewById<View>(R.id.toolbar).visibility = View.GONE
-        dialogView.findViewById<View>(R.id.btnAddCatalogItem).visibility = View.GONE
-
-        val rvCatalog = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvCatalog)
-        val adapter = com.invsmart.app.ui.adapter.CatalogProductAdapter { product ->
-            showImportQuantityDialog(product)
-        }
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_catalog_select, null, false)
+        val rvCatalog = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvCatalogSelect)
+        
+        val adapter = com.invsmart.app.ui.adapter.CatalogProductAdapter(
+            onImportClick = { product -> showImportQuantityDialog(product) },
+            onItemClick = { product -> showImportQuantityDialog(product) }
+        )
         rvCatalog.adapter = adapter
         rvCatalog.layoutManager = LinearLayoutManager(requireContext())
 
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle("Nhập kho từ danh mục")
+            .setTitle("Chọn sản phẩm nhập kho")
             .setView(dialogView)
             .setNegativeButton("Đóng", null)
             .create()
 
+        // Observe catalog productsF
         viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                managerViewModel.catalogProducts.collect { products ->
-                    adapter.submitList(products)
+            managerViewModel.catalogProducts.collect { products ->
+                android.util.Log.d("INVENTORY_FRAGMENT", "Dialog observing ${products.size} catalog products")
+                if (products.isNotEmpty()) {
+                    Toast.makeText(requireContext(), "Tìm thấy ${products.size} sản phẩm mẫu", Toast.LENGTH_SHORT).show()
                 }
+                adapter.submitList(products)
             }
         }
 
@@ -184,11 +185,13 @@ class InventoryManagementFragment : Fragment() {
         val edtName = EditText(requireContext()).apply { 
             hint = "Tên sản phẩm"
             setText(productToEdit?.name ?: "")
+            isEnabled = productToEdit == null // Manager can't change name of existing (imported) product
         }
         val edtPrice = EditText(requireContext()).apply { 
             hint = "Giá (đ)"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
             setText(productToEdit?.price?.toString() ?: "")
+            isEnabled = productToEdit == null // Manager can't change price of existing (imported) product
         }
         val edtStock = EditText(requireContext()).apply { 
             hint = "Tồn kho"

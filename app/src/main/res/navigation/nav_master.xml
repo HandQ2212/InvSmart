@@ -2,27 +2,36 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/nav_manager"
+    android:id="@+id/nav_master"
     app:startDestination="@id/managerDashboardFragment">
 
     <fragment
         android:id="@+id/managerDashboardFragment"
         android:name="com.invsmart.app.ui.view.ManagerDashboardFragment"
-        android:label="Manager Dashboard"
+        android:label="Master Dashboard"
         tools:layout="@layout/fragment_manager_dashboard">
         <action
-            android:id="@+id/action_dashboard_to_inventory"
-            app:destination="@id/inventoryManagementFragment" />
+            android:id="@+id/action_dashboard_to_catalogManager"
+            app:destination="@id/catalogManagementFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_branchManager"
+            app:destination="@id/branchManagementFragment" />
         <action
             android:id="@+id/action_dashboard_to_staffManager"
             app:destination="@id/staffManagerFragment" />
     </fragment>
 
     <fragment
-        android:id="@+id/inventoryManagementFragment"
-        android:name="com.invsmart.app.ui.view.InventoryManagementFragment"
-        android:label="Quản lý Kho"
-        tools:layout="@layout/fragment_inventory_management" />
+        android:id="@+id/catalogManagementFragment"
+        android:name="com.invsmart.app.ui.view.CatalogManagementFragment"
+        android:label="Quản lý Danh mục"
+        tools:layout="@layout/fragment_catalog_management" />
+
+    <fragment
+        android:id="@+id/branchManagementFragment"
+        android:name="com.invsmart.app.ui.view.BranchManagementFragment"
+        android:label="Quản lý Chi nhánh"
+        tools:layout="@layout/fragment_branch_management" />
 
     <fragment
         android:id="@+id/staffManagerFragment"
