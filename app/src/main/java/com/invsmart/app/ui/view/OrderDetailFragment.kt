@@ -55,22 +55,36 @@ class OrderDetailFragment : Fragment() {
             addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
         }
 
+        binding.rgPayment.setOnCheckedChangeListener { _, checkedId ->
+            val method = if (checkedId == R.id.rbQr) "qr" else "cash"
+            staffViewModel.setPaymentMethod(method)
+            binding.btnScanQr.visibility = if (method == "qr") View.VISIBLE else View.GONE
+        }
+
+        binding.btnScanQr.setOnClickListener {
+            // Simulate PayOS QR Payment
+            showQrPaymentDialog()
+        }
+
         binding.btnConfirm.setOnClickListener {
-            val user = mainViewModel.uiState.value.currentUser
-            if (user != null) {
-                binding.btnConfirm.isEnabled = false
-                binding.progressBar.visibility = View.VISIBLE
-                staffViewModel.submitOrder(
-                    currentUser = user,
-                    orderType = "sale"
-                )
+            val method = staffViewModel.paymentMethod.value
+            if (method == "cash") {
+                showCashConfirmationDialog()
             } else {
-                Toast.makeText(requireContext(), "Lỗi: Không tìm thấy tài khoản", Toast.LENGTH_SHORT).show()
+                processSubmitOrder()
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    staffViewModel.isPaymentConfirmed.collect { isConfirmed ->
+                        binding.btnConfirm.isEnabled = isConfirmed
+                        // Visual feedback for disabled state
+                        binding.btnConfirm.alpha = if (isConfirmed) 1.0f else 0.5f
+                    }
+                }
+                
                 launch {
                     staffViewModel.selectedProducts.collect { selections ->
                         val list = selections.toList()
@@ -107,6 +121,57 @@ class OrderDetailFragment : Fragment() {
                     }
                 }
             }
+        }
+    }
+
+    private fun showCashConfirmationDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Xác nhận thanh toán")
+            .setMessage("Xác nhận khách hàng đã thanh toán bằng tiền mặt?")
+            .setPositiveButton("Xác nhận") { _, _ ->
+                processSubmitOrder()
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
+    }
+
+    private fun showQrPaymentDialog() {
+        // Here we simulate the PayOS Flow. In a real app, you'd call an API and show a QR or WebView.
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_qr_payment, null)
+        
+        // Show actual amount in dialog
+        val totalAmount = binding.tvTotalAmount.text.toString()
+        dialogView.findViewById<android.widget.TextView>(R.id.tvQrAmount).text = totalAmount
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        dialogView.findViewById<android.widget.Button>(R.id.btnCancelPayment).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogView.findViewById<android.widget.Button>(R.id.btnSimulateSuccess).setOnClickListener {
+            staffViewModel.setPaymentConfirmed(true)
+            Toast.makeText(requireContext(), "Thanh toán QR thành công!", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun processSubmitOrder() {
+        val user = mainViewModel.uiState.value.currentUser
+        if (user != null) {
+            binding.btnConfirm.isEnabled = false
+            binding.progressBar.visibility = View.VISIBLE
+            staffViewModel.submitOrder(
+                currentUser = user,
+                orderType = "sale"
+            )
+        } else {
+            Toast.makeText(requireContext(), "Lỗi: Không tìm thấy tài khoản", Toast.LENGTH_SHORT).show()
         }
     }
 

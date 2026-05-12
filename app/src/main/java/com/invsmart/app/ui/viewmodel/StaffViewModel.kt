@@ -48,6 +48,22 @@ class StaffViewModel @Inject constructor(
         _orderCreationState.value = null
     }
 
+    private val _paymentMethod = MutableStateFlow("cash") // "cash" or "qr"
+    val paymentMethod: StateFlow<String> = _paymentMethod.asStateFlow()
+
+    private val _isPaymentConfirmed = MutableStateFlow(false)
+    val isPaymentConfirmed: StateFlow<Boolean> = _isPaymentConfirmed.asStateFlow()
+
+    fun setPaymentMethod(method: String) {
+        _paymentMethod.value = method
+        // If switching back to cash, it's considered "confirmed" for UI purposes
+        _isPaymentConfirmed.value = (method == "cash")
+    }
+
+    fun setPaymentConfirmed(confirmed: Boolean) {
+        _isPaymentConfirmed.value = confirmed
+    }
+
     fun submitOrder(currentUser: User, orderType: String = "sale") {
         viewModelScope.launch {
             val selections = _selectedProducts.value
@@ -74,7 +90,9 @@ class StaffViewModel @Inject constructor(
                 orderType = orderType,
                 items = orderItems,
                 totalQuantity = totalQty,
-                totalAmount = totalAmount
+                totalAmount = totalAmount,
+                paymentMethod = _paymentMethod.value,
+                status = if (_paymentMethod.value == "qr") "paid" else "pending_payment"
             )
 
             val result = orderRepository.createOrder(order)
@@ -84,6 +102,7 @@ class StaffViewModel @Inject constructor(
 
             if (result.isSuccess) {
                 _selectedProducts.value = emptyMap()
+                _isPaymentConfirmed.value = false
             }
         }
     }
