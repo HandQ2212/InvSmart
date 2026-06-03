@@ -83,6 +83,16 @@
                 android:text="Đăng nhập"
                 android:textStyle="bold" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGoogleLogin"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Đăng nhập với Google"
+                android:textAllCaps="false"
+                android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/tvRegister"
                 android:layout_width="wrap_content"

@@ -2,6 +2,7 @@ package com.invsmart.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseUser
 import com.invsmart.app.data.local.SessionManager
 import com.invsmart.app.data.model.AuthState
 import com.invsmart.app.data.model.UiState
@@ -151,6 +152,30 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun loginWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(authState = AuthState.Loading) }
+            authRepository.signInWithGoogle(idToken)
+                .onSuccess { firebaseUser ->
+                    ensureUserProfile(firebaseUser)
+                        .onSuccess {
+                            checkAuthStatus()
+                        }
+                        .onFailure { e ->
+                            authRepository.logout()
+                            _uiState.update {
+                                it.copy(authState = AuthState.Error(e.message ?: "Không thể khởi tạo tài khoản Google"))
+                            }
+                        }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(authState = AuthState.Error(e.message ?: "Đăng nhập Google thất bại"))
+                    }
+                }
+        }
+    }
+
     fun register(email: String, password: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(authState = AuthState.Loading) }
@@ -176,6 +201,34 @@ class MainViewModel @Inject constructor(
                     _uiState.update { it.copy(authState = AuthState.Error(e.message ?: "Đăng ký thất bại")) }
                 }
         }
+    }
+
+    private suspend fun ensureUserProfile(firebaseUser: FirebaseUser): Result<Unit> {
+        val uid = firebaseUser.uid
+        return userRepository.getUser(uid).fold(
+            onSuccess = { existingUser ->
+                if (existingUser != null) {
+                    Result.success(Unit)
+                } else {
+                    val email = firebaseUser.email
+                        ?: return Result.failure(IllegalStateException("Tài khoản Google chưa cung cấp email."))
+                    val displayName = firebaseUser.displayName.orEmpty()
+                    val generatedUsername = email.substringBefore("@")
+                    val newUser = User(
+                        uid = uid,
+                        email = email,
+                        fullName = displayName,
+                        username = generatedUsername,
+                        usernameLower = generatedUsername.lowercase(),
+                        phoneNumber = firebaseUser.phoneNumber.orEmpty(),
+                        roleGlobal = "unassigned",
+                        accessStatus = "pending"
+                    )
+                    userRepository.createUser(newUser)
+                }
+            },
+            onFailure = { Result.failure(it) }
+        )
     }
 
     fun logout() {

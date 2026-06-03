@@ -48,15 +48,14 @@ class StaffViewModel @Inject constructor(
         _orderCreationState.value = null
     }
 
-    private val _paymentMethod = MutableStateFlow("cash") // "cash" or "qr"
+    private val _paymentMethod = MutableStateFlow("cash")
     val paymentMethod: StateFlow<String> = _paymentMethod.asStateFlow()
 
-    private val _isPaymentConfirmed = MutableStateFlow(false)
+    private val _isPaymentConfirmed = MutableStateFlow(true)
     val isPaymentConfirmed: StateFlow<Boolean> = _isPaymentConfirmed.asStateFlow()
 
     fun setPaymentMethod(method: String) {
         _paymentMethod.value = method
-        // If switching back to cash, it's considered "confirmed" for UI purposes
         _isPaymentConfirmed.value = (method == "cash")
     }
 

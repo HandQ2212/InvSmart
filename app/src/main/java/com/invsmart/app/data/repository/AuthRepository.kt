@@ -1,7 +1,8 @@
 package com.invsmart.app.data.repository
 
-import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -28,6 +29,14 @@ class AuthRepository @Inject constructor(
         runCatching {
             auth.createUserWithEmailAndPassword(email, password).await()
             Unit
+        }
+    }
+
+    suspend fun signInWithGoogle(idToken: String): Result<FirebaseUser> = withContext(Dispatchers.IO) {
+        runCatching {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = auth.signInWithCredential(credential).await()
+            authResult.user ?: error("Không lấy được thông tin tài khoản Google.")
         }
     }
 

@@ -1,9 +1,12 @@
 package com.invsmart.app.ui.view
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -54,6 +57,8 @@ class OrderDetailFragment : Fragment() {
             adapter = detailAdapter
             addItemDecoration(DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
         }
+
+        binding.btnConfirm.visibility = View.VISIBLE
 
         binding.rgPayment.setOnCheckedChangeListener { _, checkedId ->
             val method = if (checkedId == R.id.rbQr) "qr" else "cash"
@@ -125,7 +130,7 @@ class OrderDetailFragment : Fragment() {
     }
 
     private fun showCashConfirmationDialog() {
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(requireContext())
             .setTitle("Xác nhận thanh toán")
             .setMessage("Xác nhận khách hàng đã thanh toán bằng tiền mặt?")
             .setPositiveButton("Xác nhận") { _, _ ->
@@ -136,23 +141,21 @@ class OrderDetailFragment : Fragment() {
     }
 
     private fun showQrPaymentDialog() {
-        // Here we simulate the PayOS Flow. In a real app, you'd call an API and show a QR or WebView.
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_qr_payment, null)
         
-        // Show actual amount in dialog
         val totalAmount = binding.tvTotalAmount.text.toString()
-        dialogView.findViewById<android.widget.TextView>(R.id.tvQrAmount).text = totalAmount
+        dialogView.findViewById<TextView>(R.id.tvQrAmount).text = totalAmount
 
         val dialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setView(dialogView)
             .setCancelable(false)
             .create()
 
-        dialogView.findViewById<android.widget.Button>(R.id.btnCancelPayment).setOnClickListener {
+        dialogView.findViewById<Button>(R.id.btnCancelPayment).setOnClickListener {
             dialog.dismiss()
         }
 
-        dialogView.findViewById<android.widget.Button>(R.id.btnSimulateSuccess).setOnClickListener {
+        dialogView.findViewById<Button>(R.id.btnSimulateSuccess).setOnClickListener {
             staffViewModel.setPaymentConfirmed(true)
             Toast.makeText(requireContext(), "Thanh toán QR thành công!", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
